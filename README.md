@@ -1,12 +1,5 @@
-# Danh sách API Dành cho Giao diện ReactJS (Frontend)
-
-Dựa trên cấu trúc Database đã thiết kế (`Database.drawio`) và luồng hoạt động của các AI Model (PhoBERT, LightFM), để frontend (ReactJS) hoạt động đầy đủ tính năng, chúng ta cần xây dựng Back-End cung cấp các Endpoints API như sau.
-
-Các API sẽ trả về dữ liệu định dạng **JSON**. Các Route đa phần sẽ cần Authentication token (JWT) gửi qua header `Authorization: Bearer <token>`.
-
----
-
-## 1. Authentication & Authorization (Xác thực và phân quyền)
+# Danh sách API dành cho Frontend
+## 1. Authentication và Authorization
 
 | Method | Endpoint                    | Mô tả                                   | Body/Query Parameters                   | Dữ liệu trả về (Response) |
 | ------ | --------------------------- | --------------------------------------- | --------------------------------------- | ------------------------- |
@@ -17,7 +10,7 @@ Các API sẽ trả về dữ liệu định dạng **JSON**. Các Route đa ph�
 
 ---
 
-## 2. User Profile (Hồ sơ người dùng)
+## 2. User Profile 
 
 | Method | Endpoint        | Mô tả                                         | Body/Query Parameters  | Dữ liệu trả về (Response)         |
 | ------ | --------------- | --------------------------------------------- | ---------------------- | --------------------------------- |
@@ -26,7 +19,7 @@ Các API sẽ trả về dữ liệu định dạng **JSON**. Các Route đa ph�
 
 ---
 
-## 3. Song & Genre (Khám phá chung)
+## 3. Song và Genre 
 
 | Method | Endpoint          | Mô tả                                               | Body/Query Parameters                            | Dữ liệu trả về (Response)                                  |
 | ------ | ----------------- | --------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -36,7 +29,7 @@ Các API sẽ trả về dữ liệu định dạng **JSON**. Các Route đa ph�
 
 ---
 
-## 4. Interaction (Tương tác thu thập Data cho AI)
+## 4. Interaction 
 
 Đây là các API rất quan trọng để lưu dữ liệu vào bảng `UserSongInteraction`, làm đầu vào huấn luyện cho mô hình **LightFM**.
 
@@ -47,7 +40,7 @@ Các API sẽ trả về dữ liệu định dạng **JSON**. Các Route đa ph�
 
 ---
 
-## 5. Recommendation (Chức năng Trí tuệ Nhân tạo - AI)
+## 5. Recommendation 
 
 | Method | Endpoint                      | Mô tả                                                                                                 | Body/Query Parameters                 | Dữ liệu trả về (Response)                              |
 | ------ | ----------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
@@ -58,7 +51,7 @@ _(Lưu ý: `/api/recommendations/mood` ở tầng Backend sẽ gọi nội bộ 
 
 ---
 
-## 6. Playlists (Quản lý danh sách phát cá nhân)
+## 6. Playlists 
 
 | Method | Endpoint                              | Mô tả                                                | Body/Query Parameters        | Dữ liệu trả về (Response)                 |
 | ------ | ------------------------------------- | ---------------------------------------------------- | ---------------------------- | ----------------------------------------- |
