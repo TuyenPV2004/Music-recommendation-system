@@ -45,8 +45,8 @@ backend/
 │   │
 │   └── ai/                      # AI integration (placeholder)
 │       ├── __init__.py
-│       ├── mood_predictor.py    # Wrapper gọi module_1/predict.py
-│       └── song_recommender.py  # Wrapper gọi module 2 LightFM
+│       ├── mood_predictor.py    # Wrapper gọi module_1
+│       └── song_recommender.py  # Wrapper gọi module_2 
 │
 ├── requirements.txt
 ├── .env
