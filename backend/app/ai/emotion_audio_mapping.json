@@ -1,0 +1,75 @@
+{
+  "_comment": "Ánh xạ cảm xúc → audio feature vector (tất cả normalized về 0-1). Thứ tự features khớp với AUDIO_FEATURES trong similarity.py.",
+  "_features": ["valence", "energy", "danceability", "acousticness", "instrumentalness", "tempo_norm", "loudness_norm"],
+
+  "enjoyment": {
+    "valence":          0.82,
+    "energy":           0.78,
+    "danceability":     0.74,
+    "acousticness":     0.22,
+    "instrumentalness": 0.12,
+    "tempo_norm":       0.65,
+    "loudness_norm":    0.72,
+    "description": "Vui vẻ, hạnh phúc, phấn khích"
+  },
+  "sadness": {
+    "valence":          0.15,
+    "energy":           0.28,
+    "danceability":     0.28,
+    "acousticness":     0.65,
+    "instrumentalness": 0.38,
+    "tempo_norm":       0.30,
+    "loudness_norm":    0.28,
+    "description": "Buồn bã, u sầu, cô đơn"
+  },
+  "anger": {
+    "valence":          0.28,
+    "energy":           0.88,
+    "danceability":     0.42,
+    "acousticness":     0.10,
+    "instrumentalness": 0.15,
+    "tempo_norm":       0.70,
+    "loudness_norm":    0.85,
+    "description": "Tức giận, bực bội, khó chịu"
+  },
+  "fear": {
+    "valence":          0.22,
+    "energy":           0.48,
+    "danceability":     0.28,
+    "acousticness":     0.55,
+    "instrumentalness": 0.42,
+    "tempo_norm":       0.38,
+    "loudness_norm":    0.35,
+    "description": "Sợ hãi, lo lắng, căng thẳng"
+  },
+  "disgust": {
+    "valence":          0.18,
+    "energy":           0.42,
+    "danceability":     0.28,
+    "acousticness":     0.45,
+    "instrumentalness": 0.30,
+    "tempo_norm":       0.35,
+    "loudness_norm":    0.40,
+    "description": "Ghê tởm, khó chịu, chán nản"
+  },
+  "surprise": {
+    "valence":          0.62,
+    "energy":           0.72,
+    "danceability":     0.52,
+    "acousticness":     0.20,
+    "instrumentalness": 0.18,
+    "tempo_norm":       0.62,
+    "loudness_norm":    0.65,
+    "description": "Ngạc nhiên, bất ngờ, choáng váng"
+  },
+  "other": {
+    "valence":          0.50,
+    "energy":           0.50,
+    "danceability":     0.50,
+    "acousticness":     0.40,
+    "instrumentalness": 0.25,
+    "tempo_norm":       0.50,
+    "loudness_norm":    0.50,
+    "description": "Không xác định rõ cảm xúc"
+  }
+}

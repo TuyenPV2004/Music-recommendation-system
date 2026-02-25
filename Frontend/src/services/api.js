@@ -62,7 +62,9 @@ export const userAPI = {
 export const songAPI = {
   list: (params = {}) =>
     request(`${API_BASE}/songs?${new URLSearchParams(params)}`),
-  detail: (id) => request(`${API_BASE}/songs/${id}`),
+  // similar_limit: số bài tương tự trả về (mặc định 10, tối đa 30)
+  detail: (id, params = {}) =>
+    request(`${API_BASE}/songs/${id}?${new URLSearchParams(params)}`),
 };
 
 // ── Genres ──────────────────────────────────────────────
