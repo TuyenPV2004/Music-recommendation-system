@@ -32,7 +32,6 @@ __pycache__/
 env/
 venv/
 .env
-.env.*
 *.out
 *.err
 *.sqlite3
