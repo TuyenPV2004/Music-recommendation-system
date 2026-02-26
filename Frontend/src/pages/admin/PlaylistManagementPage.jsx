@@ -1,98 +1,106 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ListMusic,
   Search,
   Trash2,
-  MoreVertical,
   Eye,
   Lock,
   Globe,
   Filter,
+  Loader2,
+  Music,
 } from "lucide-react";
-import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
-
-// Mock Data
-const MOCK_PLAYLISTS = [
-  {
-    id: 1,
-    name: "Nhạc Khích Lệ Tinh Thần",
-    user: { id: 101, name: "Nguyễn Văn A", email: "nguyenvana@gmail.com" },
-    isPublic: true,
-    songCount: 15,
-    createdAt: "2023-11-20",
-  },
-  {
-    id: 2,
-    name: "Lofi Focus 99+",
-    user: { id: 105, name: "Trần Thị B", email: "tranthib@yahoo.com" },
-    isPublic: true,
-    songCount: 42,
-    createdAt: "2023-10-15",
-  },
-  {
-    id: 3,
-    name: "Tủ Nhạc Tập Gym Bí Mật",
-    user: { id: 204, name: "Lê Hoàng C", email: "lehoangc@outlook.com" },
-    isPublic: false,
-    songCount: 28,
-    createdAt: "2023-12-01",
-  },
-  {
-    id: 4,
-    name: "Top Hits 2024",
-    user: { id: 101, name: "Nguyễn Văn A", email: "nguyenvana@gmail.com" },
-    isPublic: true,
-    songCount: 50,
-    createdAt: "2024-01-05",
-  },
-  {
-    id: 5,
-    name: "Buồn Của Tôi",
-    user: { id: 330, name: "Phạm Tấn D", email: "phamtd@gmail.com" },
-    isPublic: false,
-    songCount: 12,
-    createdAt: "2024-02-10",
-  },
-];
+import { adminAPI, playlistAPI } from "../../services/api";
+import Swal from "sweetalert2";
+import Modal from "../../components/ui/Modal";
 
 export default function PlaylistManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPrivacy, setFilterPrivacy] = useState("");
+  const [playlists, setPlaylists] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 20;
 
-  const filteredPlaylists = MOCK_PLAYLISTS.filter((playlist) => {
+  const [detailPlaylist, setDetailPlaylist] = useState(null);
+  const [playlistSongs, setPlaylistSongs] = useState([]);
+  const [loadingSongs, setLoadingSongs] = useState(false);
+
+  const fetchPlaylists = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.playlists({ page, limit });
+      setPlaylists(res.data || []);
+      setTotal(res.total || 0);
+    } catch (err) {
+      console.error("Failed to fetch playlists:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, [fetchPlaylists]);
+
+  // Client-side filtering
+  const filteredPlaylists = playlists.filter((playlist) => {
     const matchesSearch =
       playlist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      playlist.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      playlist.user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (playlist.user_id || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
     let matchesPrivacy = true;
-    if (filterPrivacy === "public") matchesPrivacy = playlist.isPublic === true;
+    if (filterPrivacy === "public")
+      matchesPrivacy = playlist.is_public === true;
     if (filterPrivacy === "private")
-      matchesPrivacy = playlist.isPublic === false;
+      matchesPrivacy = playlist.is_public === false;
 
     return matchesSearch && matchesPrivacy;
   });
 
-  const handleDelete = (name) => {
-    // In a real app, you'd show a confirmation modal first
-    if (
-      window.confirm(
-        `Bạn có chắc chắn muốn xóa Playlist "${name}" không? Hành động này sẽ xóa cả danh sách bài hát bên trong nó.`,
-      )
-    ) {
+  const totalPages = Math.ceil(total / limit);
+
+  const handleDelete = async (name) => {
+    const result = await Swal.fire({
+      title: "Xóa Playlist?",
+      text: `Bạn có chắc chắn muốn xóa Playlist "${name}" không? Hành động này sẽ xóa cả danh sách bài hát bên trong nó.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      background: "#1D1D1D",
+      color: "#fff",
+    });
+
+    if (result.isConfirmed) {
       toast.info(`Đã xóa Playlist "${name}" bởi Admin`);
     }
   };
 
-  const handleInspect = (id) => {
-    toast.info(
-      `Tính năng xem chi tiết Playlist ID #${id} đang được phát triển.`,
-    );
+  const handleInspect = async (id, name, songCount) => {
+    setDetailPlaylist({ id, name, songCount });
+    setLoadingSongs(true);
+    setPlaylistSongs([]);
+    try {
+      const res = await playlistAPI.detail(id);
+      const songs = res.data?.songs || [];
+      setPlaylistSongs(songs);
+    } catch (err) {
+      console.error("Failed to fetch songs for playlist:", err);
+      toast.error("Không thể tải danh sách bài hát");
+    } finally {
+      setLoadingSongs(false);
+    }
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -109,26 +117,18 @@ export default function PlaylistManagementPage() {
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-gray-900 p-4 rounded-xl border border-gray-800">
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-4 flex-1">
-          <div className="relative w-full lg:w-96">
+          <div className="relative w-full lg:w-72">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-full leading-5 bg-black text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 sm:text-sm transition-colors"
-              placeholder="Tìm theo tên playlist, tên người dùng, email"
+              placeholder="Tìm theo tên playlist, user ID"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button
-            onClick={() =>
-              toast.info("Tính năng thêm Playlist mới đang được phát triển.")
-            }
-            className="flex items-center justify-center gap-2 bg-green-500 text-white px-5 py-2 rounded-full font-medium text-sm hover:focus:ring-green-600 hover:bg-green-600 transition-colors shadow-sm whitespace-nowrap"
-          >
-            Thêm Playlist mới
-          </button>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-2 text-sm text-gray-400 whitespace-nowrap hidden sm:flex">
@@ -160,15 +160,21 @@ export default function PlaylistManagementPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400  tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider"
                 >
                   Tên Playlist
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider hidden sm:table-cell"
+                >
+                  Bài hát
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider hidden md:table-cell"
                 >
-                  Người tạo
+                  User ID
                 </th>
                 <th
                   scope="col"
@@ -191,70 +197,16 @@ export default function PlaylistManagementPage() {
               </tr>
             </thead>
             <tbody className="bg-gray-900 divide-y divide-gray-800">
-              {filteredPlaylists.map((playlist) => (
-                <tr
-                  key={playlist.id}
-                  className="hover:bg-gray-800/50 transition-colors group"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
-                    #{playlist.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <span className="text-sm font-bold text-white block">
-                          {playlist.name}
-                        </span>
-                        <span className="text-xs text-gray-500 block">
-                          {playlist.songCount} bài hát
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                    <div className="text-sm text-gray-300 font-medium">
-                      {playlist.user.name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {playlist.user.email}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell text-sm">
-                    {playlist.isPublic ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-green-500/10 text-green-400 border-green-500/20">
-                        <Globe className="w-3.5 h-3.5" /> Public
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-800 text-gray-400 border-gray-700">
-                        <Lock className="w-3.5 h-3.5" /> Private
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
-                    {playlist.createdAt}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleInspect(playlist.id)}
-                        className="text-gray-400 hover:text-blue-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
-                        title="Xem chi tiết các bài hát"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(playlist.name)}
-                        className="text-gray-400 hover:text-red-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
-                        title="Xóa Playlist (Kiểm duyệt)"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-pink-500 animate-spin" />
+                      <span className="ml-3 text-gray-400">Đang tải...</span>
                     </div>
                   </td>
                 </tr>
-              ))}
-
-              {filteredPlaylists.length === 0 && (
+              ) : filteredPlaylists.length === 0 ? (
                 <tr>
                   <td
                     colSpan="6"
@@ -266,6 +218,79 @@ export default function PlaylistManagementPage() {
                     </div>
                   </td>
                 </tr>
+              ) : (
+                filteredPlaylists.map((playlist) => (
+                  <tr
+                    key={playlist.id}
+                    className="hover:bg-gray-800/50 transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
+                      #{playlist.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <span className="text-sm font-bold text-white block">
+                            {playlist.name}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden sm:table-cell">
+                      <span className="bg-gray-800 text-gray-300 py-1 px-3 rounded-full text-xs font-medium border border-gray-700">
+                        {playlist.songCount ?? 0} bài
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                      <div
+                        className="text-sm text-gray-300 font-mono truncate max-w-[150px]"
+                        title={playlist.user_id}
+                      >
+                        {playlist.user_id
+                          ? playlist.user_id.substring(0, 12) + "..."
+                          : "—"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell text-sm">
+                      {playlist.is_public ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-green-500/10 text-green-400 border-green-500/20">
+                          <Globe className="w-3.5 h-3.5" /> Public
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-gray-800 text-gray-400 border-gray-700">
+                          <Lock className="w-3.5 h-3.5" /> Private
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
+                      {playlist.created_at || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            handleInspect(
+                              playlist.id,
+                              playlist.name,
+                              playlist.songCount,
+                            )
+                          }
+                          className="text-gray-400 hover:text-blue-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
+                          title="Xem chi tiết các bài hát"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(playlist.name)}
+                          className="text-gray-400 hover:text-red-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
+                          title="Xóa Playlist (Kiểm duyệt)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -278,14 +303,101 @@ export default function PlaylistManagementPage() {
             <span className="font-medium text-white">
               {filteredPlaylists.length}
             </span>{" "}
-            /{" "}
-            <span className="font-medium text-white">
-              {MOCK_PLAYLISTS.length}
-            </span>{" "}
-            playlist
+            / <span className="font-medium text-white">{total}</span> playlist
+            (Trang {page}/{totalPages || 1})
           </p>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Trước
+            </button>
+            <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium border border-green-500 shadow-sm">
+              {page}
+            </span>
+            <button
+              className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Tiếp
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* DETAIL MODAL */}
+      <Modal
+        isOpen={!!detailPlaylist}
+        onClose={() => setDetailPlaylist(null)}
+        title={`Chi tiết Playlist: ${detailPlaylist?.name}`}
+        maxWidth="max-w-2xl"
+        className="bg-white/5 backdrop-blur-xl border border-white/10"
+      >
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center">
+                <ListMusic className="w-5 h-5 text-pink-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold">{detailPlaylist?.name}</h3>
+                <p className="text-sm text-gray-400 text-left">
+                  ID: #{detailPlaylist?.id}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-white">
+                {detailPlaylist?.songCount || 0}
+              </p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">
+                Bài hát
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-gray-300 mb-3">
+              Danh sách bài hát thuộc Playlist
+            </h4>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden max-h-[40vh] overflow-y-auto scrollbar-hide">
+              {loadingSongs ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="w-6 h-6 text-pink-500 animate-spin" />
+                </div>
+              ) : playlistSongs.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">
+                  Playlist này chưa có bài hát nào.
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-800">
+                  {playlistSongs.map((song) => (
+                    <li
+                      key={song.id}
+                      className="p-3 hover:bg-gray-800/50 flex items-center gap-3 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded shadow-sm bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <Music className="w-5 h-5 text-gray-500" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">
+                          {song.title}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {song.artist}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

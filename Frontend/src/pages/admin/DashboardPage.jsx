@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Music,
   Disc,
   ListMusic,
-  Plus,
   Play,
   Activity,
+  Smile,
+  Loader2,
 } from "lucide-react";
 import StatCard from "../../components/admin/StatCard";
 import {
@@ -19,82 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ResponsiveBar } from "@nivo/bar";
-
-const STATS = [
-  {
-    title: "Người dùng",
-    value: "1,245",
-    icon: <Users className="w-6 h-6" />,
-    trend: "12%",
-    trendSuffix: "so với tháng trước",
-    trendUp: true,
-    colorClass: "text-blue-500",
-    bgClass: "bg-blue-500/10",
-  },
-  {
-    title: "Bài hát",
-    value: "8,942",
-    icon: <Music className="w-6 h-6" />,
-    trend: "5%",
-    trendSuffix: "so với tuần trước",
-    trendUp: true,
-    colorClass: "text-green-500",
-    bgClass: "bg-green-500/10",
-  },
-  {
-    title: "Thể loại",
-    value: "42",
-    icon: <Disc className="w-6 h-6" />,
-    trend: "2",
-    trendSuffix: "thể loại mới",
-    trendUp: true,
-    colorClass: "text-purple-500",
-    bgClass: "bg-purple-500/10",
-  },
-  {
-    title: "Playlists",
-    value: "3,421",
-    icon: <ListMusic className="w-6 h-6" />,
-    trend: "1%",
-    trendSuffix: "so với hôm qua",
-    trendUp: false,
-    colorClass: "text-yellow-500",
-    bgClass: "bg-yellow-500/10",
-  },
-];
-
-const RECENT_SONGS = [
-  {
-    id: 1,
-    title: "Ngày Mai Người Ta Lấy Chồng",
-    artist: "Thành Đạt",
-    plays: "124,500",
-    cover: "https://i.ytimg.com/vi/u6Y96g_yjnQ/maxresdefault.jpg",
-  },
-  {
-    id: 2,
-    title: "Lửng Lơ",
-    artist: "B-Ray",
-    plays: "98,200",
-    cover:
-      "https://image-cdn.nct.vn/song/share/2022/02/20/5/f/b/1/1645341333426.jpg",
-  },
-  {
-    id: 3,
-    title: "Nấu Ăn Cho Em",
-    artist: "Đen Vâu",
-    plays: "210,400",
-    cover:
-      "https://photo-resize-zmp3.zmdcdn.me/w600_r300x169_jpeg/thumb_video/9/9/e/e/99ee33f170ea4841485d21ec3f76321f.jpg",
-  },
-  {
-    id: 4,
-    title: "Chắc Ai Đó Sẽ Về",
-    artist: "Sơn Tùng M-TP",
-    plays: "450,123",
-    cover: "https://i1.sndcdn.com/artworks-000179966454-gtqf9y-t500x500.jpg",
-  },
-];
+import { adminAPI } from "../../services/api";
 
 const MOCK_AREA_DATA = [
   { name: "T2", listen: 4000 },
@@ -116,8 +42,90 @@ const MOCK_BAR_DATA = [
 ];
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await adminAPI.stats();
+        setStats(res.data);
+      } catch (err) {
+        console.error("Failed to fetch admin stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const statCards = stats
+    ? [
+        {
+          title: "Người dùng",
+          value: stats.total_users?.toLocaleString() || "0",
+          icon: <Users className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "tổng cộng",
+          trendUp: true,
+          colorClass: "text-blue-500",
+          bgClass: "bg-blue-500/10",
+        },
+        {
+          title: "Bài hát",
+          value: stats.total_songs?.toLocaleString() || "0",
+          icon: <Music className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "tổng cộng",
+          trendUp: true,
+          colorClass: "text-green-500",
+          bgClass: "bg-green-500/10",
+        },
+        {
+          title: "Thể loại",
+          value: stats.total_genres?.toLocaleString() || "0",
+          icon: <Disc className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "thể loại",
+          trendUp: true,
+          colorClass: "text-purple-500",
+          bgClass: "bg-purple-500/10",
+        },
+        {
+          title: "Playlists",
+          value: stats.total_playlists?.toLocaleString() || "0",
+          icon: <ListMusic className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "tổng cộng",
+          trendUp: true,
+          colorClass: "text-yellow-500",
+          bgClass: "bg-yellow-500/10",
+        },
+        {
+          title: "Cảm xúc",
+          value: stats.total_moods?.toLocaleString() || "0",
+          icon: <Smile className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "nhãn cảm xúc",
+          trendUp: true,
+          colorClass: "text-orange-500",
+          bgClass: "bg-orange-500/10",
+        },
+        {
+          title: "Tương tác",
+          value: stats.total_interactions?.toLocaleString() || "0",
+          icon: <Activity className="w-6 h-6" />,
+          trend: "",
+          trendSuffix: "lượt tương tác",
+          trendUp: true,
+          colorClass: "text-red-500",
+          bgClass: "bg-red-500/10",
+        },
+      ]
+    : [];
+
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-8">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -125,21 +133,28 @@ export default function DashboardPage() {
             Tổng quan hệ thống
           </h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Chào mừng Admin! Dưới đây là hoạt động hôm nay của Moodify.
+            Chào mừng Admin! Dưới đây là hoạt động của Moodify.
           </p>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {STATS.map((stat, i) => (
-          <StatCard key={i} {...stat} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+          <span className="ml-3 text-gray-400">Đang tải dữ liệu...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {statCards.map((stat, i) => (
+            <StatCard key={i} {...stat} />
+          ))}
+        </div>
+      )}
 
       {/* Main Content Areas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Col: Activity Chart Placeholder */}
+        {/* Left Col: Activity Chart */}
         <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">
@@ -220,51 +235,51 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right Col: Recent Uploads */}
+        {/* Right Col: Quick Stats */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-xl font-bold text-white mb-6">Top thịnh hành</h2>
+          <h2 className="text-xl font-bold text-white mb-6">Thông tin nhanh</h2>
           <div className="space-y-4">
-            {RECENT_SONGS.map((song, i) => (
-              <div
-                key={song.id}
-                className="flex items-center gap-4 hover:bg-gray-800/50 p-2 -mx-2 rounded-lg transition-colors cursor-default group"
-              >
-                <div className="w-10 text-center font-bold text-gray-500 group-hover:text-white transition-colors">
-                  0{i + 1}
-                </div>
-                <div className="relative w-10 h-10 bg-gray-800 rounded flex flex-shrink-0 items-center justify-center overflow-hidden">
-                  <img
-                    src={song.cover}
-                    alt={song.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Play
-                      className="w-4 h-4 text-white hover:text-green-400 translate-x-0.5"
-                      fill="currentColor"
-                    />
+            {stats && (
+              <>
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Users className="w-5 h-5 text-blue-400" />
+                    <span className="text-gray-300 text-sm">Người dùng</span>
                   </div>
+                  <span className="text-white font-bold">
+                    {stats.total_users?.toLocaleString()}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-medium text-sm truncate">
-                    {song.title}
-                  </h4>
-                  <p className="text-gray-400 text-xs truncate">
-                    {song.artist}
-                  </p>
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Music className="w-5 h-5 text-green-400" />
+                    <span className="text-gray-300 text-sm">Bài hát</span>
+                  </div>
+                  <span className="text-white font-bold">
+                    {stats.total_songs?.toLocaleString()}
+                  </span>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-gray-300 text-sm font-semibold">
-                    {song.plays}
-                  </p>
-                  <p className="text-gray-500 text-xs">lượt nghe</p>
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-red-400" />
+                    <span className="text-gray-300 text-sm">Tương tác</span>
+                  </div>
+                  <span className="text-white font-bold">
+                    {stats.total_interactions?.toLocaleString()}
+                  </span>
                 </div>
-              </div>
-            ))}
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <ListMusic className="w-5 h-5 text-yellow-400" />
+                    <span className="text-gray-300 text-sm">Playlists</span>
+                  </div>
+                  <span className="text-white font-bold">
+                    {stats.total_playlists?.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
-          <button className="w-full mt-6 py-2.5 rounded-lg border border-gray-700 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
-            Xem tất cả
-          </button>
         </div>
       </div>
 

@@ -25,13 +25,13 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Token không hợp lệ")
     except JWTError:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Người dùng không tồn tại")
     return user
@@ -46,7 +46,7 @@ def get_current_user_optional(
         return None
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        return db.query(User).filter(User.id == user_id).first()
+        user_id = str(payload.get("sub"))
+        return db.query(User).filter(User.user_id == user_id).first()
     except JWTError:
         return None

@@ -85,7 +85,7 @@ def hybrid_recommendation(
     3. Nếu Module 2 chưa tích hợp (trả []) → fallback lấy bài phổ biến nhất
     """
     # 1. Gọi Module 2
-    track_hashes = song_recommender.recommend(user.id, k=limit)
+    track_hashes = song_recommender.recommend(user.user_id, k=limit)
 
     if track_hashes:
         # 2. Query songs bằng track_hash

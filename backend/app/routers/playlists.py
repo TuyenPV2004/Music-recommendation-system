@@ -10,12 +10,14 @@ from ..schemas.playlist import PlaylistCreate, AddSongRequest
 router = APIRouter()
 
 
-def _song_to_brief(song: Song) -> dict:
+def _song_to_brief(song: Song, added_at=None) -> dict:
     return {
         "id": song.id,
         "title": song.name,
         "artist": song.author or "Unknown",
         "cover": song.audio_link or "",
+        "duration": song.duration, # mapped from DB
+        "dateAdded": added_at.strftime("%d/%m/%Y") if added_at else "Gần đây",
     }
 
 
@@ -25,7 +27,7 @@ def list_playlists(
     user: User = Depends(get_current_user),
 ):
     """Danh sách playlist của user hiện tại"""
-    playlists = db.query(Playlist).filter(Playlist.user_id == user.id).all()
+    playlists = db.query(Playlist).filter(Playlist.user_id == user.user_id).all()
     result = []
     for p in playlists:
         song_count = len(p.songs)
@@ -47,7 +49,7 @@ def create_playlist(
 ):
     """Tạo playlist mới"""
     playlist = Playlist(
-        user_id=user.id,
+        user_id=user.user_id,
         name=data.name,
         is_public=int(data.is_public),
     )
@@ -65,10 +67,16 @@ def get_playlist(playlist_id: int, db: Session = Depends(get_db)):
     """Chi tiết playlist (bao gồm danh sách bài hát)"""
     playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
     if not playlist:
-        raise HTTPException(status_code=404, detail="Playlist không tồn tại")
+        raise HTTPException(status_code=404, detail="Không tìm thấy playlist")
 
-    # Lấy tên người tạo
-    owner = db.query(User).filter(User.id == playlist.user_id).first()
+    # Fetch owner info manually
+    owner = db.query(User).filter(User.user_id == playlist.user_id).first()
+
+    songs_with_dates = db.query(Song, playlist_song_table.c.added_at)\
+        .join(playlist_song_table, playlist_song_table.c.song_id == Song.id)\
+        .filter(playlist_song_table.c.playlist_id == playlist_id)\
+        .order_by(playlist_song_table.c.order_index)\
+        .all()
 
     return {
         "success": True,
@@ -78,7 +86,7 @@ def get_playlist(playlist_id: int, db: Session = Depends(get_db)):
             "description": "",
             "cover": playlist.songs[0].audio_link if playlist.songs else "",
             "creator": owner.name if owner else "Unknown",
-            "songs": [_song_to_brief(s) for s in playlist.songs],
+            "songs": [_song_to_brief(s, added) for s, added in songs_with_dates],
         },
     }
 
@@ -93,7 +101,7 @@ def add_song_to_playlist(
     """Thêm bài hát vào playlist"""
     # Kiểm tra playlist thuộc user
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại")
@@ -134,7 +142,7 @@ def remove_song_from_playlist(
 ):
     """Xóa bài hát khỏi playlist"""
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại")
@@ -157,7 +165,7 @@ def delete_playlist(
 ):
     """Xóa playlist"""
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại hoặc bạn không có quyền")

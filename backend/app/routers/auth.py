@@ -36,7 +36,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     # 4. Tạo user
     user = User(
-        user_hash=user_hash,
+        user_id=user_hash,
         name=req.name,
         email=req.email,
         password=hashed_pw,
@@ -47,14 +47,17 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.refresh(user)
 
     # 5. Tạo JWT token
-    token = create_token(user.id)
+    token = create_token(user.user_id)
     return TokenResponse(
         token=token,
         user={
-            "id": user.id,
+            "user_id": user.user_id,
             "name": user.name,
             "email": user.email,
             "birth_date": str(user.birth_date) if user.birth_date else None,
+            "country": user.country,
+            "gender": user.gender,
+            "created_at": str(user.created_at) if user.created_at else None,
         },
     )
 
@@ -66,14 +69,17 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not user or not user.password or not verify_password(req.password, user.password):
         raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
 
-    token = create_token(user.id)
+    token = create_token(user.user_id)
     return TokenResponse(
         token=token,
         user={
-            "id": user.id,
+            "user_id": user.user_id,
             "name": user.name,
             "email": user.email,
             "birth_date": str(user.birth_date) if user.birth_date else None,
+            "country": user.country,
+            "gender": user.gender,
+            "created_at": str(user.created_at) if user.created_at else None,
         },
     )
 
@@ -87,7 +93,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         # Tạo reset token (UUID)
         raw_token = str(uuid.uuid4())
         reset_token = ResetPasswordToken(
-            user_id=user.id,
+            user_id=user.user_id,
             token=raw_token,
             expired_at=datetime.utcnow() + timedelta(hours=1),
         )
@@ -118,7 +124,7 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Mã xác nhận không hợp lệ hoặc đã hết hạn")
 
     # Update password
-    user = db.query(User).filter(User.id == token_record.user_id).first()
+    user = db.query(User).filter(User.user_id == token_record.user_id).first()
     user.password = hash_password(req.new_password)
 
     # Đánh dấu token đã sử dụng

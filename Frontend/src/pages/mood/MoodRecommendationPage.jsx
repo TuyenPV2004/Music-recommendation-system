@@ -4,79 +4,50 @@ import SongCard from "../../components/song/SongCard";
 import { Sparkles, Loader2, Smile, Frown, Coffee } from "lucide-react";
 import { toast } from "react-toastify";
 
-const MOCK_MOOD_RESULTS = {
-  vui_ve: {
+import { recommendAPI } from "../../services/api";
+
+const MOOD_UI_MAP = {
+  enjoyment: {
     label: "Vui vẻ, Hứng khởi",
     icon: <Smile className="w-8 h-8 text-yellow-400" />,
     color: "text-yellow-400",
     bg: "bg-yellow-400/10 border-yellow-400/20",
-    songs: [
-      {
-        id: 101,
-        title: "Waiting For You",
-        artist: "MONO",
-        cover:
-          "https://i.ytimg.com/vi/u6Y96g_yjnQ/maxresdefault.jpg",
-      },
-      {
-        id: 102,
-        title: "See Tình",
-        artist: "Hoàng Thùy Linh",
-        cover:
-          "https://image-cdn.nct.vn/song/share/2022/02/20/5/f/b/1/1645341333426.jpg",
-      },
-      {
-        id: 106,
-        title: "Đi Đu Đưa Đi",
-        artist: "Bích Phương",
-        cover:
-          "https://photo-resize-zmp3.zmdcdn.me/w600_r300x169_jpeg/thumb_video/9/9/e/e/99ee33f170ea4841485d21ec3f76321f.jpg",
-      },
-    ],
   },
-  buon_ba: {
-    label: "Buồn bã / Suy tư",
+  sadness: {
+    label: "Buồn bã, Suy tư",
     icon: <Frown className="w-8 h-8 text-blue-400" />,
     color: "text-blue-400",
     bg: "bg-blue-400/10 border-blue-400/20",
-    songs: [
-      {
-        id: 103,
-        title: "Chạm Khẽ Tim Anh Một Chút Thôi",
-        artist: "Noo Phước Thịnh",
-        cover:
-          "https://images.unsplash.com/photo-1516280440502-86111aebea23?w=300&h=300&fit=crop&q=80",
-      },
-      {
-        id: 107,
-        title: "Nước Mắt Em Lau Bằng Tình Yêu Mới",
-        artist: "Da LAB, Tóc Tiên",
-        cover:
-          "https://images.unsplash.com/photo-1493225457124-a1a2a5f0a469?w=300&h=300&fit=crop&q=80",
-      },
-    ],
   },
-  thu_gian: {
-    label: "Thư giãn / Lofi",
-    icon: <Coffee className="w-8 h-8 text-green-400" />,
-    color: "text-green-400",
-    bg: "bg-green-400/10 border-green-400/20",
-    songs: [
-      {
-        id: 104,
-        title: "Thức Giấc",
-        artist: "Da LAB",
-        cover:
-          "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop&q=80",
-      },
-      {
-        id: 105,
-        title: "Bài Này Chill Phết",
-        artist: "Đen, Min",
-        cover:
-          "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop&q=80",
-      },
-    ],
+  anger: {
+    label: "Tức giận",
+    icon: <Frown className="w-8 h-8 text-red-500" />,
+    color: "text-red-500",
+    bg: "bg-red-500/10 border-red-500/20",
+  },
+  fear: {
+    label: "Sợ hãi, Lo âu",
+    icon: <Frown className="w-8 h-8 text-purple-400" />,
+    color: "text-purple-400",
+    bg: "bg-purple-400/10 border-purple-400/20",
+  },
+  surprise: {
+    label: "Ngạc nhiên, Bất ngờ",
+    icon: <Sparkles className="w-8 h-8 text-orange-400" />,
+    color: "text-orange-400",
+    bg: "bg-orange-400/10 border-orange-400/20",
+  },
+  disgust: {
+    label: "Khó chịu, Chán ghét",
+    icon: <Frown className="w-8 h-8 text-green-600" />,
+    color: "text-green-600",
+    bg: "bg-green-600/10 border-green-600/20",
+  },
+  other: {
+    label: "Thư giãn, Khác",
+    icon: <Coffee className="w-8 h-8 text-gray-400" />,
+    color: "text-gray-400",
+    bg: "bg-gray-400/10 border-gray-400/20",
   },
 };
 
@@ -94,31 +65,22 @@ export default function MoodRecommendationPage() {
     setIsLoading(true);
     setResult(null);
 
-    // TODO: Connect to backend API: POST /api/recommendations/mood
     try {
-      // Mock analyzing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await recommendAPI.mood({ text: statusText });
 
-      const text = statusText.toLowerCase();
-      let moodKey = "thu_gian"; // default
-      if (
-        text.includes("vui") ||
-        text.includes("tuyệt") ||
-        text.includes("hào hứng")
-      ) {
-        moodKey = "vui_ve";
-      } else if (
-        text.includes("buồn") ||
-        text.includes("chán") ||
-        text.includes("tệ") ||
-        text.includes("khóc")
-      ) {
-        moodKey = "buon_ba";
-      }
+      const moodKey = response.detected_mood
+        ? response.detected_mood.toLowerCase()
+        : "other";
+      const uiConfig = MOOD_UI_MAP[moodKey] || MOOD_UI_MAP.other;
 
-      setResult(MOCK_MOOD_RESULTS[moodKey]);
+      setResult({
+        ...uiConfig,
+        songs: response.songs || [],
+        confidence: response.confidence,
+      });
       toast.success("Đã phân tích xong cảm xúc của bạn!");
     } catch (error) {
+      console.error(error);
       toast.error("Không thể phân tích cảm xúc lúc này. Thử lại sau!");
     } finally {
       setIsLoading(false);
@@ -126,16 +88,16 @@ export default function MoodRecommendationPage() {
   };
 
   return (
-    <div className="h-full flex flex-col p-6 lg:p-10">
-      <div className="max-w-4xl w-full mx-auto space-y-10 mt-8">
+    <div className="h-full flex flex-col p-6 lg:p-10 overflow-y-auto scrollbar-hide">
+      <div className="max-w-6xl w-full mx-auto space-y-10 mt-8">
         {/* Header section */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
             Âm nhạc theo cảm xúc
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Công nghệ thông minh của chúng tôi sẽ thấu hiểu tâm trạng của bạn qua từng câu chữ và đưa
-            ra những giai điệu đồng điệu nhất.
+            Công nghệ thông minh của chúng tôi sẽ thấu hiểu tâm trạng của bạn
+            qua từng câu chữ và đưa ra những giai điệu đồng điệu nhất.
           </p>
         </div>
 
@@ -207,14 +169,25 @@ export default function MoodRecommendationPage() {
 
             {/* Song Recommendations Grid */}
             <div>
-              <h4 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                Danh sách gợi ý
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                {result.songs.map((song) => (
-                  <SongCard key={song.id} song={song} />
-                ))}
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                  Danh sách gợi ý theo cảm xúc "{result.label}"
+                </h4>
+                <span className="text-sm font-medium text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700/50">
+                  {Math.min(result.songs.length, 10)} bài hát
+                </span>
               </div>
+              {result.songs.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                  {result.songs.slice(0, 10).map((song) => (
+                    <SongCard key={song.id} song={song} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  Không tìm thấy bài hát phù hợp với cảm xúc này.
+                </div>
+              )}
             </div>
           </div>
         )}

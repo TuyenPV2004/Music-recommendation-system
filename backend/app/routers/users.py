@@ -20,11 +20,15 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Cập nhật thông tin user (name, birth_date)"""
+    """Cập nhật thông tin user (name, birth_date, country, gender)"""
     if data.name is not None:
         current_user.name = data.name
     if data.birth_date is not None:
         current_user.birth_date = data.birth_date
+    if data.country is not None:
+        current_user.country = data.country
+    if data.gender is not None:
+        current_user.gender = data.gender
     db.commit()
     db.refresh(current_user)
     return current_user

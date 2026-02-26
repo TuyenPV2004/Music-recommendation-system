@@ -9,10 +9,8 @@ import {
   Disc,
   Activity,
   LogOut,
-  ShieldAlert,
-  ChevronLeft,
-  Menu,
 } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function AdminSidebar() {
   const navigate = useNavigate();
@@ -58,24 +56,28 @@ export default function AdminSidebar() {
 
   return (
     <div
-      className={`bg-gray-900 border-r border-gray-800 h-full flex flex-col hidden md:flex transition-all duration-300 ${
-        isExpanded ? "w-64" : "w-20"
+      className={`bg-gray-900 rounded-2xl m-2 h-[calc(100%-16px)] flex flex-col hidden md:flex transition-all duration-300 ${
+        isExpanded ? "w-56" : "w-20"
       }`}
     >
       {/* Brand & Toggle */}
       <div
         className={`flex items-center ${
-          isExpanded ? "justify-between px-6" : "justify-center"
+          isExpanded ? "px-6" : "justify-center"
         } py-6 border-b border-gray-800`}
       >
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-10 h-10 bg-[#2DC275] rounded-full flex items-center justify-center shadow-lg shadow-[#2DC275]/20 flex-shrink-0 hover:bg-[#25a863] transition-colors cursor-pointer"
+          title={isExpanded ? "Thu gọn" : "Mở rộng"}
+        >
+          <Music className="w-5 h-5 text-white" />
+        </button>
         {isExpanded && (
           <Link
             to="/admin"
-            className="flex items-center gap-3 group overflow-hidden"
+            className="flex items-center gap-0 group overflow-hidden ml-3"
           >
-            <div className="w-10 h-10 bg-[#2DC275] rounded-lg flex items-center justify-center shadow-lg shadow-[#2DC275]/20 flex-shrink-0">
-              <ShieldAlert className="w-5 h-5 text-white" />
-            </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white group-hover:text-[#2DC275] transition-colors truncate">
                 Moodify
@@ -86,17 +88,6 @@ export default function AdminSidebar() {
             </div>
           </Link>
         )}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0"
-          title={isExpanded ? "Thu gọn" : "Mở rộng"}
-        >
-          {isExpanded ? (
-            <ChevronLeft className="w-5 h-5" />
-          ) : (
-            <Menu className="w-6 h-6" />
-          )}
-        </button>
       </div>
 
       {/* Navigation */}
@@ -129,7 +120,7 @@ export default function AdminSidebar() {
 
       {/* Footer / Account */}
       <div
-        className={`p-4 border-t border-gray-800 bg-gray-950/50 ${!isExpanded && "flex flex-col items-center"}`}
+        className={`p-4 border-t border-gray-800 ${!isExpanded && "flex flex-col items-center"}`}
       >
         {isExpanded ? (
           <div className="flex items-center gap-3 mb-4 px-2">
@@ -155,16 +146,39 @@ export default function AdminSidebar() {
         )}
 
         <button
-          onClick={() => {
-            // TODO: Implement logout
-            navigate("/login");
+          onClick={async () => {
+            const result = await Swal.fire({
+              title: "Đăng xuất?",
+              text: "Bạn có chắc chắn muốn đăng xuất khỏi trang quản trị?",
+              icon: "warning",
+              showCancelButton: true,
+              confirmButtonColor: "#d33",
+              cancelButtonColor: "#3085d6",
+              confirmButtonText: "Đăng xuất",
+              cancelButtonText: "Hủy",
+              background: "#1D1D1D",
+              color: "#fff",
+            });
+
+            if (result.isConfirmed) {
+              Swal.fire({
+                title: "Đã đăng xuất!",
+                text: "Bạn đã đăng xuất thành công.",
+                icon: "success",
+                background: "#1D1D1D",
+                color: "#fff",
+                timer: 1500,
+                showConfirmButton: false,
+              });
+              navigate("/login");
+            }
           }}
           title={!isExpanded ? "Đăng xuất" : ""}
-          className={`flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-[#2DC275]/20 hover:text-[#2DC275] rounded-lg transition-colors border border-transparent hover:border-[#2DC275]/30 ${
+          className={`flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-400 bg-gray-800 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20 ${
             isExpanded ? "w-full px-4 py-2" : "p-3"
           }`}
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
+          <LogOut className="w-5 h-5 flex-shrink-0 text-red-500 group-hover:text-red-400" />
           {isExpanded && <span className="truncate">Đăng xuất</span>}
         </button>
       </div>

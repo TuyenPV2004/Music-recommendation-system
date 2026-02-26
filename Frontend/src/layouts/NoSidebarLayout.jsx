@@ -1,10 +1,9 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../components/layout/Sidebar";
 import MusicPlayer from "../components/layout/MusicPlayer";
 import usePlayerStore from "../store/usePlayerStore";
 
-export default function MainLayout() {
+export default function NoSidebarLayout() {
   const currentSong = usePlayerStore((state) => state.currentSong);
 
   return (
@@ -12,14 +11,9 @@ export default function MainLayout() {
       <div
         className={`flex flex-1 overflow-hidden ${currentSong ? "pb-24" : ""}`}
       >
-        {/* Left Sidebar */}
-        <Sidebar className="flex-shrink-0" />
-
-        {/* Main Content Area */}
+        {/* Main Content Area without Sidebar */}
         <div className="flex-1 bg-gradient-to-b from-gray-900 via-black to-black flex flex-col overflow-hidden">
-          {/* We will add a Header for mobile and search later inside Outlet context or directly here */}
           <main className="flex-1 flex flex-col overflow-hidden">
-            {/* dynamic padding ensures content doesn't get hidden behind the fixed Music Player */}
             <Outlet />
           </main>
         </div>

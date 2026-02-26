@@ -4,6 +4,8 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
 import useAuthStore from "../../store/useAuthStore";
+import { authAPI } from "../../services/api";
+import Swal from "sweetalert2";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -21,18 +23,36 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
 
-    // TODO: Implement actual API call to /api/auth/login
+    // Connect to actual backend API
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (formData.email && formData.password) {
-        // Success
-        login({ email: formData.email, name: "User" }); // Set basic mock user data
-        console.log("Login attempt:", formData);
-        navigate("/"); // Redirect to dashboard
-      } else {
+      if (!formData.email || !formData.password) {
         throw new Error("Vui lòng nhập đầy đủ thông tin");
       }
+
+      const response = await authAPI.login(formData);
+      // The response expects a token and user data
+      // For now we assume the structure is something like { token: string, user: {...} } or { access_token: string }
+      // FastAPI usually returns: { "access_token": "...", "token_type": "bearer" } for OAuth2. And then we fetch user?
+      // Wait, API.md says `/api/auth/login` returns `{ token, user_id }` maybe we will fetch me inside checkAuth. We can just pass token.
+
+      const token =
+        response.data?.token || response.token || response.access_token;
+      const user = response.data?.user || response.user;
+
+      // Call store login with real user data
+      login(user, token);
+
+      Swal.fire({
+        title: "Đăng nhập thành công!",
+        text: "Chào mừng bạn trở lại với Moodify.",
+        icon: "success",
+        background: "#1D1D1D",
+        color: "#fff",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      navigate("/"); // Redirect to dashboard
     } catch (err) {
       toast.error(
         err.message ||

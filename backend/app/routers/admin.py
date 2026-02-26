@@ -32,28 +32,45 @@ def admin_list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: str = Query(""),
+    role: str = Query(""),
+    country: str = Query(""),
     db: Session = Depends(get_db),
 ):
     """Quản lý users (UserManagementPage)"""
     query = db.query(User)
+    
     if search:
         query = query.filter(
             (User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
         )
+        
+    if country:
+        query = query.filter(User.country == country)
+        
+    # Example role filtering logic if roles were a real column in User. 
+    # For now, assuming default 'user' role is hardcoded in the response, 
+    # but we will return empty if they filter for 'admin' since there's no Role col yet.
+    if role:
+        if role == 'admin':
+            return {"items": [], "total": 0, "page": page, "limit": limit}
+        # If role == 'user', don't filter anything out because everyone is 'user' for now
 
     total = query.count()
     users = query.offset((page - 1) * limit).limit(limit).all()
 
     return {
-        "success": True,
-        "data": [
+        "items": [
             {
-                "id": u.id,
+                "id": u.user_id,
                 "name": u.name,
-                "email": u.email or "",
+                "email": u.email,
+                "role": "user",
+                "status": "active",
                 "country": u.country or "",
-                "sex": u.sex or "",
+                "gender": u.gender or "",
                 "created_at": str(u.created_at) if u.created_at else "",
+                "birth_date": str(u.birth_date) if u.birth_date else "",
+                "password": u.password or "",
             }
             for u in users
         ],
@@ -94,6 +111,23 @@ def admin_list_songs(
                 "duration": s.duration,
                 "spotify_id": s.spotify_id or "",
                 "created_at": str(s.created_at) if s.created_at else "",
+                # Additional fields for Detail Modal:
+                "track_hash": s.track_hash,
+                "audio_link": s.audio_link,
+                "release_date": str(s.release_date) if s.release_date else "",
+                "tags": s.tags,
+                "danceability": s.danceability,
+                "energy": s.energy,
+                "song_key": s.song_key,
+                "loudness": s.loudness,
+                "mode": s.mode,
+                "speechiness": s.speechiness,
+                "acousticness": s.acousticness,
+                "instrumentalness": s.instrumentalness,
+                "liveness": s.liveness,
+                "valence": s.valence,
+                "tempo": s.tempo,
+                "time_signature": s.time_signature,
             }
             for s in songs
         ],

@@ -11,35 +11,92 @@ import {
   MonitorSpeaker,
   Volume2,
   Maximize,
+  Music2,
 } from "lucide-react";
+import { useRef, useEffect } from "react";
 import usePlayerStore from "../../store/usePlayerStore";
 
 export default function MusicPlayer() {
   const [rating, setRating] = useState(0);
   const [volume, setVolume] = useState(80);
   const [showRatingMenu, setShowRatingMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
+
   const { currentSong, isPlaying, togglePlay, closePlayer } = usePlayerStore();
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current
+          .play()
+          .catch((e) => console.error("Playback failed: ", e));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, currentSong]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
+    }
+  }, [volume]);
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const handleSeek = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    if (audioRef.current) {
+      audioRef.current.currentTime = pos * duration;
+    }
+  };
 
   if (!currentSong) return null;
 
   return (
-    <div className="h-24 bg-gray-950 border-t border-gray-800 flex items-center justify-between px-4 md:px-6 w-full text-white">
+    <div className="h-24 bg-[#000000] flex items-center justify-between px-4 md:px-6 w-full text-white">
+      {/* Hidden Audio Element */}
+      {currentSong.audio_link && (
+        <audio
+          ref={audioRef}
+          src={currentSong.audio_link}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={() => togglePlay()} // Pause when ended, or next
+        />
+      )}
+
       {/* 1. Song Info */}
       <div className="flex items-center gap-4 w-1/4 min-w-[200px]">
-        <img
-          src={
-            currentSong.cover ||
-            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop"
-          }
-          alt="Album Cover"
-          className="w-14 h-14 rounded-md shadow-lg object-cover"
-        />
+        <div className="w-14 h-14 rounded-md shadow-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center flex-shrink-0">
+          <Music2 className="w-6 h-6 text-white" />
+        </div>
         <div className="overflow-hidden">
           <h4 className="font-semibold text-sm truncate hover:underline cursor-pointer">
-            {currentSong.title}
+            {currentSong.name || currentSong.title}
           </h4>
           <p className="text-xs text-gray-400 truncate hover:underline cursor-pointer">
-            {currentSong.artist || currentSong.author}
+            {currentSong.author || currentSong.artist}
           </p>
         </div>
       </div>
@@ -94,43 +151,62 @@ export default function MusicPlayer() {
 
         {/* Progress Bar */}
         <div className="w-full flex items-center gap-2 group">
-          <span className="text-xs text-gray-400">0:00</span>
-          <div className="h-1.5 flex-1 bg-gray-600 rounded-full overflow-hidden flex self-center relative cursor-pointer group">
-            <div className="h-full bg-white group-hover:bg-green-500 transition-colors w-0"></div>
-          </div>
           <span className="text-xs text-gray-400">
-            {currentSong.duration || "4:15"}
+            {formatTime(currentTime)}
           </span>
+          <div
+            className="h-1.5 flex-1 bg-gray-600 rounded-full overflow-hidden flex self-center relative cursor-pointer group"
+            onClick={handleSeek}
+          >
+            <div
+              className="h-full bg-white group-hover:bg-green-500 transition-colors"
+              style={{
+                width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
+              }}
+            ></div>
+          </div>
+          <span className="text-xs text-gray-400">{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* 3. Rating & Extra Controls */}
-      <div className="flex items-center justify-end w-1/4 min-w-[250px] gap-4">
+      <div className="flex items-center justify-end w-1/4 min-w-[250px] gap-3">
         {/* Device View */}
         <button
-          className="text-gray-400 hover:text-white transition-colors"
+          className="flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           title="Thiết bị"
         >
           <MonitorSpeaker className="w-5 h-5" />
         </button>
 
         {/* Volume Controls */}
-        <div className="flex items-center gap-2 group w-24">
+        <div className="flex items-center gap-2 group w-28">
           <button
-            className="text-gray-400 hover:text-white transition-colors"
+            className="flex items-center justify-center text-gray-400 hover:text-white transition-colors flex-shrink-0"
             title="Âm lượng"
+            onClick={() => setVolume(volume === 0 ? 80 : 0)}
           >
             <Volume2 className="w-5 h-5" />
           </button>
-          <div className="h-1.5 flex-1 bg-gray-600 rounded-full overflow-hidden flex self-center relative cursor-pointer group-hover:bg-gray-500">
-            <div className="h-full bg-white group-hover:bg-green-500 transition-colors w-4/5"></div>
+          <div
+            className="h-1.5 flex-1 bg-gray-600 rounded-full overflow-hidden relative cursor-pointer group-hover:bg-gray-500"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pos = (e.clientX - rect.left) / rect.width;
+              setVolume(Math.max(0, Math.min(100, pos * 100)));
+            }}
+          >
+            <div
+              className="h-full bg-white group-hover:bg-green-500 transition-colors"
+              style={{ width: `${volume}%` }}
+            ></div>
           </div>
         </div>
 
         {/* Rating Menu (Single Star) */}
-        <div className="relative">
+        <div className="relative flex items-center">
           <button
-            className={`text-gray-400 hover:text-green-400 transition-colors ${rating > 0 ? "text-green-400" : ""}`}
+            className={`flex items-center justify-center text-gray-400 hover:text-green-400 transition-colors ${rating > 0 ? "text-green-400" : ""}`}
             title="Đánh giá"
             onClick={() => setShowRatingMenu(!showRatingMenu)}
           >
@@ -169,7 +245,7 @@ export default function MusicPlayer() {
 
         {/* Fullscreen */}
         <button
-          className="text-gray-400 hover:text-white transition-colors"
+          className="flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           title="Toàn màn hình"
         >
           <Maximize className="w-5 h-5" />
@@ -178,7 +254,7 @@ export default function MusicPlayer() {
         {/* Close specific to global player mockup */}
         <button
           onClick={closePlayer}
-          className="text-gray-400 hover:text-red-400 transition-colors"
+          className="flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors"
           title="Đóng trình phát"
         >
           <X className="w-5 h-5" />

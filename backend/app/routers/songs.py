@@ -23,8 +23,11 @@ def _song_to_brief(song: Song) -> dict:
     """Chuyển Song ORM → dict phù hợp cho SongCard component"""
     return {
         "id": song.id,
+        "name": song.name,
         "title": song.name,
+        "author": song.author or "Unknown",
         "artist": song.author or "Unknown",
+        "audio_link": song.audio_link or "",
         "cover": song.audio_link or "",
     }
 
@@ -80,18 +83,29 @@ def get_song(song_id: int, db: Session = Depends(get_db)):
         "success": True,
         "data": {
             "id": song.id,
+            "name": song.name,
             "title": song.name,
+            "author": song.author,
             "artist": song.author,
             "album": song.tags or "",
             "releaseDate": str(song.release_date) if song.release_date else "",
             "duration": _ms_to_time(song.duration),
+            "duration_ms": song.duration,
+            "audio_link": song.audio_link or "",
             "cover": song.audio_link or "",
             "genre": genre_name,
+            "genre_id": song.genre_id,
             "listens": f"{total_listens:,}",
             "track_hash": song.track_hash,
+            "spotify_id": song.spotify_id,
             "danceability": song.danceability,
             "energy": song.energy,
             "valence": song.valence,
             "tempo": song.tempo,
+            "acousticness": song.acousticness,
+            "speechiness": song.speechiness,
+            "instrumentalness": song.instrumentalness,
+            "liveness": song.liveness,
+            "loudness": song.loudness,
         },
     }

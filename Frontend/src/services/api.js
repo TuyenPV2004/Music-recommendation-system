@@ -1,142 +1,93 @@
+import axios from "axios";
+
 const API_BASE = "http://localhost:8000/api";
 
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-function authHeaders() {
-  const token = getToken();
-  return {
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  headers: {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+  },
+});
 
-async function request(url, options = {}) {
-  const res = await fetch(url, {
-    headers: authHeaders(),
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.detail || "Lỗi hệ thống");
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return data;
-}
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const message =
+      error.response?.data?.detail || error.message || "Lỗi hệ thống";
+    return Promise.reject(new Error(message));
+  },
+);
 
 // ── Authentication ──────────────────────────────────────
 export const authAPI = {
-  register: (body) =>
-    request(`${API_BASE}/auth/register`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  login: (body) =>
-    request(`${API_BASE}/auth/login`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  forgotPassword: (body) =>
-    request(`${API_BASE}/auth/forgot-password`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  resetPassword: (body) =>
-    request(`${API_BASE}/auth/reset-password`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
+  register: (body) => apiClient.post("/auth/register", body),
+  login: (body) => apiClient.post("/auth/login", body),
+  forgotPassword: (body) => apiClient.post("/auth/forgot-password", body),
+  resetPassword: (body) => apiClient.post("/auth/reset-password", body),
 };
 
 // ── User Profile ────────────────────────────────────────
 export const userAPI = {
-  getMe: () => request(`${API_BASE}/users/me`),
-  update: (body) =>
-    request(`${API_BASE}/users/me`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
+  getMe: () => apiClient.get("/users/me"),
+  update: (body) => apiClient.put("/users/me", body),
 };
 
 // ── Songs ───────────────────────────────────────────────
 export const songAPI = {
-  list: (params = {}) =>
-    request(`${API_BASE}/songs?${new URLSearchParams(params)}`),
-  detail: (id) => request(`${API_BASE}/songs/${id}`),
+  list: (params = {}) => apiClient.get("/songs", { params }),
+  detail: (id) => apiClient.get(`/songs/${id}`),
 };
 
 // ── Genres ──────────────────────────────────────────────
 export const genreAPI = {
-  list: () => request(`${API_BASE}/genres`),
+  list: () => apiClient.get("/genres"),
 };
 
 // ── Moods ───────────────────────────────────────────────
 export const moodAPI = {
-  list: () => request(`${API_BASE}/moods`),
+  list: () => apiClient.get("/moods"),
 };
 
 // ── Interactions ────────────────────────────────────────
 export const interactionAPI = {
-  play: (body) =>
-    request(`${API_BASE}/interactions/play`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  rate: (body) =>
-    request(`${API_BASE}/interactions/rate`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
+  play: (body) => apiClient.post("/interactions/play", body),
+  rate: (body) => apiClient.post("/interactions/rate", body),
 };
 
 // ── Playlists ───────────────────────────────────────────
 export const playlistAPI = {
-  list: () => request(`${API_BASE}/playlists`),
-  create: (body) =>
-    request(`${API_BASE}/playlists`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  detail: (id) => request(`${API_BASE}/playlists/${id}`),
+  list: () => apiClient.get("/playlists"),
+  create: (body) => apiClient.post("/playlists", body),
+  detail: (id) => apiClient.get(`/playlists/${id}`),
   addSong: (playlistId, body) =>
-    request(`${API_BASE}/playlists/${playlistId}/songs`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
+    apiClient.post(`/playlists/${playlistId}/songs`, body),
   removeSong: (playlistId, songId) =>
-    request(`${API_BASE}/playlists/${playlistId}/songs/${songId}`, {
-      method: "DELETE",
-    }),
-  delete: (id) =>
-    request(`${API_BASE}/playlists/${id}`, {
-      method: "DELETE",
-    }),
+    apiClient.delete(`/playlists/${playlistId}/songs/${songId}`),
+  delete: (id) => apiClient.delete(`/playlists/${id}`),
 };
 
 // ── Recommendations ─────────────────────────────────────
 export const recommendAPI = {
-  mood: (body) =>
-    request(`${API_BASE}/recommendations/mood`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  hybrid: (params = {}) =>
-    request(
-      `${API_BASE}/recommendations/hybrid?${new URLSearchParams(params)}`,
-    ),
+  mood: (body) => apiClient.post("/recommendations/mood", body),
+  hybrid: (params = {}) => apiClient.get("/recommendations/hybrid", { params }),
 };
 
 // ── Admin ───────────────────────────────────────────────
 export const adminAPI = {
-  stats: () => request(`${API_BASE}/admin/stats`),
-  users: (params = {}) =>
-    request(`${API_BASE}/admin/users?${new URLSearchParams(params)}`),
-  songs: (params = {}) =>
-    request(`${API_BASE}/admin/songs?${new URLSearchParams(params)}`),
-  genres: () => request(`${API_BASE}/admin/genres`),
-  moods: () => request(`${API_BASE}/admin/moods`),
+  stats: () => apiClient.get("/admin/stats"),
+  users: (params = {}) => apiClient.get("/admin/users", { params }),
+  songs: (params = {}) => apiClient.get("/admin/songs", { params }),
+  genres: () => apiClient.get("/admin/genres"),
+  moods: () => apiClient.get("/admin/moods"),
   interactions: (params = {}) =>
-    request(`${API_BASE}/admin/interactions?${new URLSearchParams(params)}`),
-  playlists: (params = {}) =>
-    request(`${API_BASE}/admin/playlists?${new URLSearchParams(params)}`),
+    apiClient.get("/admin/interactions", { params }),
+  playlists: (params = {}) => apiClient.get("/admin/playlists", { params }),
 };

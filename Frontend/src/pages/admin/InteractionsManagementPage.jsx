@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Activity,
   Search,
@@ -7,93 +7,59 @@ import {
   Clock,
   Filter,
   Key,
+  Loader2,
 } from "lucide-react";
-import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
-
-// Mock Data (Representing user_song_interactions table)
-const MOCK_INTERACTIONS = [
-  {
-    id: 1,
-    userId: 101,
-    userName: "Nguyễn Văn A",
-    songId: 1,
-    songTitle: "Chắc Ai Đó Sẽ Về",
-    listenCount: 45,
-    listenDuration: 8500, // seconds
-    rate: 5,
-    lastListenAt: "2024-02-24 09:15:22",
-  },
-  {
-    id: 2,
-    userId: 105,
-    userName: "Trần Thị B",
-    songId: 4,
-    songTitle: "Lửng Lơ",
-    listenCount: 12,
-    listenDuration: 2100,
-    rate: 4,
-    lastListenAt: "2024-02-23 20:45:10",
-  },
-  {
-    id: 3,
-    userId: 204,
-    userName: "Lê Hoàng C",
-    songId: 2,
-    songTitle: "Nấu Ăn Cho Em",
-    listenCount: 8,
-    listenDuration: 1850,
-    rate: 0, // Not rated yet
-    lastListenAt: "2024-02-22 15:30:00",
-  },
-  {
-    id: 4,
-    userId: 101,
-    userName: "Nguyễn Văn A",
-    songId: 3,
-    songTitle: "Có Chàng Trai Viết Lên Cây",
-    listenCount: 22,
-    listenDuration: 4500,
-    rate: 5,
-    lastListenAt: "2024-02-20 08:20:15",
-  },
-  {
-    id: 5,
-    userId: 330,
-    userName: "Phạm Tấn D",
-    songId: 1,
-    songTitle: "Chắc Ai Đó Sẽ Về",
-    listenCount: 2,
-    listenDuration: 400,
-    rate: 2,
-    lastListenAt: "2024-02-18 19:10:05",
-  },
-];
+import { adminAPI } from "../../services/api";
 
 export default function InteractionsManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [interactions, setInteractions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 20;
 
-  const filteredInteractions = MOCK_INTERACTIONS.filter((interaction) => {
+  const fetchInteractions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.interactions({ page, limit });
+      setInteractions(res.data || []);
+      setTotal(res.total || 0);
+    } catch (err) {
+      console.error("Failed to fetch interactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    fetchInteractions();
+  }, [fetchInteractions]);
+
+  // Client-side filtering
+  const filteredInteractions = interactions.filter((interaction) => {
     const matchesSearch =
-      interaction.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      interaction.songTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      (interaction.user_id || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      String(interaction.song_id || "").includes(searchQuery);
 
     let matchesFilter = true;
     if (filterType === "rated") matchesFilter = interaction.rate > 0;
     if (filterType === "high_engagement")
-      matchesFilter = interaction.listenCount >= 20;
+      matchesFilter = interaction.listen_count >= 20;
 
     return matchesSearch && matchesFilter;
   });
 
+  const totalPages = Math.ceil(total / limit);
+
   const handleExportData = () => {
-    // In a real application, this would trigger an API call to generate and download a CSV/JSON
     toast.success(
       "Đang chuẩn bị dữ liệu. File dataset.csv sẽ được tải xuống tự động.",
     );
-
-    // Fake download delay
     setTimeout(() => {
       toast.info(
         "Tải xuống dataset thành công! Sẵn sàng cho quá trình huấn luyện LightFM.",
@@ -103,6 +69,7 @@ export default function InteractionsManagementPage() {
 
   // Helper to format seconds to HR:MIN:SEC
   const formatDuration = (totalSeconds) => {
+    if (!totalSeconds) return "—";
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
@@ -112,7 +79,7 @@ export default function InteractionsManagementPage() {
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -156,7 +123,7 @@ export default function InteractionsManagementPage() {
             <input
               type="text"
               className="block w-full pl-10 pr-3 py-2 border border-gray-700 rounded-full leading-5 bg-black text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 sm:text-sm transition-colors"
-              placeholder="Tìm user hoặc tên bài hát"
+              placeholder="Tìm user ID hoặc song ID"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -194,110 +161,54 @@ export default function InteractionsManagementPage() {
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider"
                 >
-                  Người dùng
+                  ID
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider"
                 >
-                  ID Người dùng
+                  User ID
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider"
                 >
-                  Bài hát
+                  Song ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider"
-                >
-                  ID Bài hát
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-right text-xs font-semimedium text-gray-400 tracking-wider hidden sm:table-cell"
+                  className="px-6 py-4 text-right text-xs font-semibold text-gray-400 tracking-wider hidden sm:table-cell"
                 >
                   Tần suất
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-semimedium text-gray-400 tracking-wider hidden md:table-cell"
-                >
-                  Tổng thời lượng
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-center text-xs font-semimedium text-gray-400 tracking-wider"
+                  className="px-6 py-4 text-center text-xs font-semibold text-gray-400 tracking-wider"
                 >
                   Đánh giá
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-right text-xs font-semimedium text-gray-400 tracking-wider hidden lg:table-cell"
+                  className="px-6 py-4 text-right text-xs font-semibold text-gray-400 tracking-wider hidden lg:table-cell"
                 >
                   Cập nhật lần cuối
                 </th>
               </tr>
             </thead>
             <tbody className="bg-gray-900 divide-y divide-gray-800">
-              {filteredInteractions.map((interaction) => (
-                <tr
-                  key={interaction.id}
-                  className="hover:bg-gray-800/50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white max-w-[150px] truncate">
-                      {interaction.userName}
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                      <span className="ml-3 text-gray-400">Đang tải...</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
-                    #{interaction.userId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-bold text-white max-w-[200px] truncate">
-                      {interaction.songTitle}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
-                    #{interaction.songId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-300 font-medium hidden sm:table-cell">
-                    <span className="bg-gray-800 px-2.5 py-1 rounded text-gray-300">
-                      {interaction.listenCount} lần
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden md:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-gray-500" />
-                      {formatDuration(interaction.listenDuration)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    {interaction.rate > 0 ? (
-                      <div className="flex justify-center items-center gap-1">
-                        <span className="text-white font-medium text-sm">
-                          {interaction.rate}
-                        </span>
-                        <Star
-                          className="w-4 h-4 text-green-500"
-                          fill="currentColor"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-gray-600 text-xs italic">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 hidden lg:table-cell font-mono">
-                    {interaction.lastListenAt}
                   </td>
                 </tr>
-              ))}
-
-              {filteredInteractions.length === 0 && (
+              ) : filteredInteractions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="6"
                     className="px-6 py-12 text-center text-gray-500"
                   >
                     <div className="flex flex-col items-center justify-center">
@@ -308,6 +219,53 @@ export default function InteractionsManagementPage() {
                     </div>
                   </td>
                 </tr>
+              ) : (
+                filteredInteractions.map((interaction) => (
+                  <tr
+                    key={interaction.id}
+                    className="hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      #{interaction.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div
+                        className="text-sm text-gray-300 font-mono truncate max-w-[120px]"
+                        title={interaction.user_id}
+                      >
+                        {interaction.user_id
+                          ? interaction.user_id.substring(0, 10) + "..."
+                          : "—"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
+                      #{interaction.song_id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-300 font-medium hidden sm:table-cell">
+                      <span className="bg-gray-800 px-2.5 py-1 rounded text-gray-300">
+                        {interaction.listen_count} lần
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {interaction.rate > 0 ? (
+                        <div className="flex justify-center items-center gap-1">
+                          <span className="text-white font-medium text-sm">
+                            {interaction.rate}
+                          </span>
+                          <Star
+                            className="w-4 h-4 text-green-500"
+                            fill="currentColor"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-gray-600 text-xs italic">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 hidden lg:table-cell font-mono">
+                      {interaction.last_listen_at || "—"}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -321,8 +279,30 @@ export default function InteractionsManagementPage() {
               {filteredInteractions.length}
             </span>{" "}
             records / Tổng số{" "}
-            <span className="font-medium text-white">450,212</span> records
+            <span className="font-medium text-white">
+              {total.toLocaleString()}
+            </span>{" "}
+            records (Trang {page}/{totalPages || 1})
           </p>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Trước
+            </button>
+            <span className="px-3 py-1 bg-orange-600 text-white rounded-md text-sm font-medium border border-orange-500 shadow-sm">
+              {page}
+            </span>
+            <button
+              className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Tiếp
+            </button>
+          </div>
         </div>
       </div>
     </div>

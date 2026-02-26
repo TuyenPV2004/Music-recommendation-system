@@ -19,7 +19,7 @@ def record_play(
     """Ghi nhận lượt nghe: cộng listen_count, update last_listen_at"""
     interaction = (
         db.query(UserSongInteraction)
-        .filter_by(user_id=user.id, song_id=data.song_id)
+        .filter_by(user_id=user.user_id, song_id=data.song_id)
         .first()
     )
 
@@ -30,7 +30,7 @@ def record_play(
             interaction.listen_duration = (interaction.listen_duration or 0) + data.listen_duration
     else:
         interaction = UserSongInteraction(
-            user_id=user.id,
+            user_id=user.user_id,
             song_id=data.song_id,
             listen_count=1,
             last_listen_at=sql_func.now(),
@@ -54,7 +54,7 @@ def rate_song(
 
     interaction = (
         db.query(UserSongInteraction)
-        .filter_by(user_id=user.id, song_id=data.song_id)
+        .filter_by(user_id=user.user_id, song_id=data.song_id)
         .first()
     )
 
@@ -62,7 +62,7 @@ def rate_song(
         interaction.rate = data.rate
     else:
         interaction = UserSongInteraction(
-            user_id=user.id,
+            user_id=user.user_id,
             song_id=data.song_id,
             listen_count=0,
             rate=data.rate,

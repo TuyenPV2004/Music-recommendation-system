@@ -1,85 +1,40 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Music,
   Search,
   Plus,
   Edit,
   Trash2,
-  MoreVertical,
   Play,
   Filter,
+  Loader2,
+  EllipsisVertical,
+  X,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
-
-const MOCK_GENRES = [
-  { id: 1, name: "Pop" },
-  { id: 2, name: "Ballad" },
-  { id: 3, name: "Rap/Hip-Hop" },
-  { id: 4, name: "R&B" },
-];
-
-const MOCK_MOODS = [
-  { id: 1, name: "Vui vẻ" },
-  { id: 2, name: "Buồn bã" },
-  { id: 3, name: "Thư giãn" },
-  { id: 4, name: "Sôi động" },
-];
-
-const MOCK_SONGS = [
-  {
-    id: 1,
-    title: "Chắc Ai Đó Sẽ Về",
-    author: "Sơn Tùng M-TP",
-    duration: "4:20",
-    releaseDate: "2014-12-19",
-    genre: "Pop",
-    mood: "Buồn bã",
-    cover: "https://i.ytimg.com/vi/PdbsnGuduvo/mqdefault.jpg",
-  },
-  {
-    id: 2,
-    title: "Nấu Ăn Cho Em",
-    author: "Đen Vâu ft. PiaLinh",
-    duration: "4:05",
-    releaseDate: "2023-05-12",
-    genre: "Rap/Hip-Hop",
-    mood: "Thư giãn",
-    cover:
-      "https://cdn2.tuoitre.vn/zoom/700_525/471584752817336320/2023/5/21/den-vau-nau-an-cho-em-1684631926935714041497-91-0-1138-2000-crop-1684631968837627660208.jpg",
-  },
-  {
-    id: 3,
-    title: "Có Chàng Trai Viết Lên Cây",
-    author: "Phan Mạnh Quỳnh",
-    duration: "5:12",
-    releaseDate: "2019-12-20",
-    genre: "Ballad",
-    mood: "Buồn bã",
-    cover: "https://i.ytimg.com/vi/0VC6euBtKkk/maxresdefault.jpg",
-  },
-  {
-    id: 4,
-    title: "Lửng Lơ",
-    author: "Masew x BRAY",
-    duration: "3:45",
-    releaseDate: "2020-08-15",
-    genre: "EDM",
-    mood: "Sôi động",
-    cover: "https://i.ytimg.com/vi/SdESQH77bTg/maxresdefault.jpg",
-  },
-];
+import Swal from "sweetalert2";
+import { adminAPI } from "../../services/api";
+import { getGenreColorClass } from "../../utils/genreColors";
 
 export default function SongManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
-  const [filterMood, setFilterMood] = useState("");
+
+  const [songs, setSongs] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [moods, setMoods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 20;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [detailSong, setDetailSong] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -93,21 +48,57 @@ export default function SongManagementPage() {
     moodId: "",
   });
 
-  const filteredSongs = MOCK_SONGS.filter((song) => {
-    const matchesSearch =
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.author.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGenre = filterGenre
-      ? song.genre ===
-        MOCK_GENRES.find((g) => g.id.toString() === filterGenre)?.name
-      : true;
-    const matchesMood = filterMood
-      ? song.mood ===
-        MOCK_MOODS.find((m) => m.id.toString() === filterMood)?.name
-      : true;
+  // Fetch genres & moods once
+  useEffect(() => {
+    const fetchMeta = async () => {
+      try {
+        const [genreRes, moodRes] = await Promise.all([
+          adminAPI.genres(),
+          adminAPI.moods(),
+        ]);
+        setGenres(genreRes.data || []);
+        setMoods(moodRes.data || []);
+      } catch (err) {
+        console.error("Failed to fetch genres/moods:", err);
+      }
+    };
+    fetchMeta();
+  }, []);
 
-    return matchesSearch && matchesGenre && matchesMood;
-  });
+  // Fetch songs
+  const fetchSongs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page, limit, search: searchQuery };
+      if (filterGenre) params.genre = parseInt(filterGenre);
+      const res = await adminAPI.songs(params);
+      setSongs(res.data || []);
+      setTotal(res.total || 0);
+    } catch (err) {
+      console.error("Failed to fetch songs:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, searchQuery, filterGenre]);
+
+  useEffect(() => {
+    fetchSongs();
+  }, [fetchSongs]);
+
+  // Reset page on search/filter change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterGenre]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const formatDuration = (ms) => {
+    if (!ms) return "—";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   const openCreateModal = () => {
     setEditingSong(null);
@@ -126,19 +117,15 @@ export default function SongManagementPage() {
 
   const openEditModal = (song) => {
     setEditingSong(song);
-    // Rough mock mapping for edit form (In real app, song object should have genreId/moodId)
-    const gId = MOCK_GENRES.find((g) => g.name === song.genre)?.id || "";
-    const mId = MOCK_MOODS.find((m) => m.name === song.mood)?.id || "";
-
     setFormData({
-      title: song.title,
-      author: song.author,
-      audioLink: "https://mock-audio-link.com/file.mp3", // Mock
-      cover: song.cover,
-      duration: song.duration,
-      releaseDate: song.releaseDate,
-      genreId: gId.toString(),
-      moodId: mId.toString(),
+      title: song.name,
+      author: song.author || "",
+      audioLink: "",
+      cover: "",
+      duration: song.duration ? formatDuration(song.duration) : "",
+      releaseDate: "",
+      genreId: "",
+      moodId: "",
     });
     setIsModalOpen(true);
   };
@@ -152,7 +139,7 @@ export default function SongManagementPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Mock API POST/PUT /api/songs
+      // Mock API POST/PUT (backend doesn't have create/update endpoints yet)
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (editingSong) {
@@ -161,6 +148,7 @@ export default function SongManagementPage() {
         toast.success(`Đã thêm mới bài hát "${formData.title}"`);
       }
       setIsModalOpen(false);
+      fetchSongs(); // Refresh
     } catch (error) {
       toast.error("Thao tác thất bại.");
     } finally {
@@ -168,18 +156,27 @@ export default function SongManagementPage() {
     }
   };
 
-  const handleDelete = (title) => {
-    if (
-      window.confirm(
-        `Xóa vĩnh viễn bài hát "${title}" khỏi hệ thống? Dữ liệu tương tác liên quan cũng sẽ bị ảnh hưởng.`,
-      )
-    ) {
+  const handleDelete = async (title) => {
+    const result = await Swal.fire({
+      title: "Xóa bài hát?",
+      text: `Xóa vĩnh viễn bài hát "${title}" khỏi hệ thống? Dữ liệu tương tác liên quan cũng sẽ bị ảnh hưởng.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      background: "#1D1D1D",
+      color: "#fff",
+    });
+
+    if (result.isConfirmed) {
       toast.info(`Đã xóa bài hát ${title}`);
     }
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -195,7 +192,7 @@ export default function SongManagementPage() {
       {/* Advanced Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-gray-900 p-4 rounded-xl border border-gray-800">
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-4 flex-1">
-          <div className="relative w-full lg:w-96">
+          <div className="relative w-full lg:w-72">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -209,7 +206,7 @@ export default function SongManagementPage() {
           </div>
           <button
             onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 bg-green-500 text-white px-5 py-2 rounded-full font-medium text-sm hover:focus:ring-green-600 hover:bg-green-600 transition-colors shadow-sm whitespace-nowrap"
+            className="flex items-center justify-center gap-2 bg-green-500 text-black px-5 py-2 rounded-full font-medium text-sm hover:focus:ring-green-600 hover:bg-green-400 transition-colors shadow-sm whitespace-nowrap"
           >
             Thêm bài hát mới
           </button>
@@ -221,44 +218,14 @@ export default function SongManagementPage() {
           </div>
           <div className="relative w-full sm:w-auto">
             <select
-              className="bg-black border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 pr-8 w-full sm:w-auto outline-none appearance-none cursor-pointer"
+              className="bg-gray-800/50 border border-gray-700 text-gray-100 text-sm rounded-lg focus:ring-green-500/50 focus:border-green-500 block p-2 pr-8 w-full sm:w-auto outline-none appearance-none cursor-pointer transition-colors duration-200"
               value={filterGenre}
               onChange={(e) => setFilterGenre(e.target.value)}
             >
-              <option value="">Thể loại</option>
-              {MOCK_GENRES.map((g) => (
+              <option value="">Tất cả phân loại</option>
+              {genres.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg
-                className="w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                ></path>
-              </svg>
-            </div>
-          </div>
-          <div className="relative w-full sm:w-auto">
-            <select
-              className="bg-black border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 pr-8 w-full sm:w-auto outline-none appearance-none cursor-pointer"
-              value={filterMood}
-              onChange={(e) => setFilterMood(e.target.value)}
-            >
-              <option value="">Cảm xúc</option>
-              {MOCK_MOODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
                 </option>
               ))}
             </select>
@@ -308,15 +275,15 @@ export default function SongManagementPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider hidden lg:table-cell min-w-[200px]"
+                  className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider hidden lg:table-cell"
                 >
-                  Thể loại và cảm xúc
+                  Thể loại
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-semibold text-gray-400 tracking-wider hidden xl:table-cell"
                 >
-                  Phát hành
+                  Spotify ID
                 </th>
                 <th
                   scope="col"
@@ -326,92 +293,26 @@ export default function SongManagementPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-right text-xs font-semibold text-gray-400 tracking-wider"
+                  className="px-6 py-4 text-center text-xs font-semibold text-gray-400 tracking-wider"
                 >
                   Hành động
                 </th>
               </tr>
             </thead>
             <tbody className="bg-gray-900 divide-y divide-gray-800">
-              {filteredSongs.map((song) => (
-                <tr
-                  key={song.id}
-                  className="hover:bg-gray-800/50 transition-colors group"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    #{song.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0 group-hover:shadow-md transition-shadow">
-                        <img
-                          src={song.cover}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                          <Play
-                            className="w-4 h-4 text-white ml-0.5"
-                            fill="currentColor"
-                          />
-                        </div>
-                      </div>
-                      <div
-                        className="text-sm font-bold text-white max-w-[200px] truncate"
-                        title={song.title}
-                      >
-                        {song.title}
-                        {/* Show artist on small screens where artist column is hidden */}
-                        <div className="text-xs font-normal text-gray-400 md:hidden truncate mt-0.5">
-                          {song.author}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-medium hidden md:table-cell max-w-[150px] truncate">
-                    {song.author}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                    <div className="flex flex-row gap-2 items-center flex-wrap">
-                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 w-fit">
-                        {song.genre}
-                      </span>
-                      <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 w-fit">
-                        {song.mood}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden xl:table-cell">
-                    {song.releaseDate}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden xl:table-cell">
-                    {song.duration}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEditModal(song)}
-                        className="text-gray-400 hover:text-green-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
-                        title="Chỉnh sửa Chi tiết"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(song.title)}
-                        className="text-gray-400 hover:text-red-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
-                        title="Xóa Bài hát"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-green-500 animate-spin" />
+                      <span className="ml-3 text-gray-400">Đang tải...</span>
                     </div>
                   </td>
                 </tr>
-              ))}
-
-              {filteredSongs.length === 0 && (
+              ) : songs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-6 py-12 text-center text-gray-500"
                   >
                     <div className="flex flex-col items-center justify-center">
@@ -422,6 +323,78 @@ export default function SongManagementPage() {
                     </div>
                   </td>
                 </tr>
+              ) : (
+                songs.map((song) => (
+                  <tr
+                    key={song.id}
+                    className="hover:bg-gray-800/50 transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      #{song.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-800 flex items-center justify-center">
+                          <Music className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <div
+                          className="text-sm font-bold text-white max-w-[200px] truncate"
+                          title={song.name}
+                        >
+                          {song.name}
+                          <div className="text-xs font-normal text-gray-400 md:hidden truncate mt-0.5">
+                            {song.author}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-medium hidden md:table-cell max-w-[150px] truncate">
+                      {song.author || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      {song.genre ? (
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border w-fit ${getGenreColorClass(genres.find((g) => g.name === song.genre)?.id)}`}
+                        >
+                          {song.genre}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden xl:table-cell font-mono">
+                      {song.spotify_id || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden xl:table-cell">
+                      {formatDuration(song.duration)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEditModal(song)}
+                          className="text-gray-400 hover:text-green-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDetailSong(song)}
+                          className="text-gray-400 hover:text-blue-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
+                          title="Xem chi tiết"
+                        >
+                          <EllipsisVertical className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(song.name)}
+                          className="text-gray-400 hover:text-red-400 transition-colors p-1.5 hover:bg-gray-800 rounded-md"
+                          title="Xóa bài hát"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -431,26 +404,25 @@ export default function SongManagementPage() {
         <div className="bg-gray-950/50 px-6 py-4 border-t border-gray-800 flex items-center justify-between">
           <p className="text-sm text-gray-400">
             Hiển thị{" "}
-            <span className="font-medium text-white">
-              {filteredSongs.length}
-            </span>{" "}
-            /{" "}
-            <span className="font-medium text-white">{MOCK_SONGS.length}</span>{" "}
-            bài hát
+            <span className="font-medium text-white">{songs.length}</span> /{" "}
+            <span className="font-medium text-white">{total}</span> bài hát
+            (Trang {page}/{totalPages || 1})
           </p>
           <div className="flex items-center gap-2">
             <button
               className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
-              disabled
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
               Trước
             </button>
-            <button className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium border border-green-500 shadow-sm">
-              1
-            </button>
+            <span className="px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium border border-green-500 shadow-sm">
+              {page}
+            </span>
             <button
               className="px-3 py-1 border border-gray-700 rounded-md text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
-              disabled
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
             >
               Tiếp
             </button>
@@ -462,8 +434,9 @@ export default function SongManagementPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingSong ? "Cập nhật Bài hát" : "Thêm Bài hát Mới"}
+        title={editingSong ? "Cập nhật bài hát" : "Thêm bài hát mới"}
         maxWidth="max-w-2xl"
+        showCloseButton={false}
       >
         <form onSubmit={handleSaveSong} className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -472,8 +445,8 @@ export default function SongManagementPage() {
               <Input
                 id="title"
                 name="title"
-                label="Tên Bài hát *"
-                placeholder="Ví dụ: Chắc Ai Đó Sẽ Về"
+                label="Tên bài hát"
+                placeholder="Nhập tên bài hát"
                 value={formData.title}
                 onChange={handleInputChange}
                 required
@@ -481,8 +454,8 @@ export default function SongManagementPage() {
               <Input
                 id="author"
                 name="author"
-                label="Nghệ sĩ *"
-                placeholder="Ví dụ: Sơn Tùng M-TP"
+                label="Nghệ sĩ"
+                placeholder="Nhập tên nghệ sĩ"
                 value={formData.author}
                 onChange={handleInputChange}
                 required
@@ -490,16 +463,16 @@ export default function SongManagementPage() {
               <Input
                 id="cover"
                 name="cover"
-                label="URL Ảnh Bìa (Cover Art)"
-                placeholder="https://..."
+                label="URL ảnh bìa"
+                placeholder="Nhập URL ảnh bìa"
                 value={formData.cover}
                 onChange={handleInputChange}
               />
               <Input
                 id="audioLink"
                 name="audioLink"
-                label="URL File Audio/MP3 *"
-                placeholder="https://.../file.mp3"
+                label="URL File Audio/MP3"
+                placeholder="Nhập URL file"
                 value={formData.audioLink}
                 onChange={handleInputChange}
                 required
@@ -521,7 +494,7 @@ export default function SongManagementPage() {
                     type="text"
                     id="duration"
                     name="duration"
-                    label="Thời lượng (vd: 3:45)"
+                    label="Thời lượng"
                     placeholder="Tính bằng s hoặc mm:ss"
                     value={formData.duration}
                     onChange={handleInputChange}
@@ -534,33 +507,31 @@ export default function SongManagementPage() {
             <div className="space-y-4 md:border-l md:border-gray-800 md:pl-4">
               <div>
                 <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-green-400" />
-                  Phân loại Nhãn (Mapping)
+                  Phân loại
                 </h3>
                 <p className="text-xs text-gray-400 mb-4 bg-gray-950 p-3 rounded border border-gray-800">
-                  Song Recommendation Model (LightFM) sử dụng{" "}
+                  Song Recommendation Model LightFM sử dụng{" "}
                   <strong className="text-gray-300">Thể loại</strong> và{" "}
                   <strong className="text-gray-300">Cảm xúc</strong> như những
-                  Item Features then chốt để phục vụ hệ thống Gợi ý lai
-                  (Hybrid).
+                  Item Features then chốt để phục vụ hệ thống gợi ý lai
                 </p>
               </div>
 
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-300">
-                  Thể loại Âm nhạc (Genre) *
+                  Thể loại
                 </label>
                 <select
                   name="genreId"
                   value={formData.genreId}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                  className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500"
                   required
                 >
                   <option value="" disabled>
-                    -- Chọn Thể loại --
+                    Chọn thể loại
                   </option>
-                  {MOCK_GENRES.map((g) => (
+                  {genres.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.name}
                     </option>
@@ -570,19 +541,19 @@ export default function SongManagementPage() {
 
               <div className="space-y-1 mt-4">
                 <label className="block text-sm font-medium text-gray-300">
-                  Nhãn Cảm xúc (Mood) *
+                  Nhãn cảm xúc
                 </label>
                 <select
                   name="moodId"
                   value={formData.moodId}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition duration-200"
+                  className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500"
                   required
                 >
                   <option value="" disabled>
-                    -- Chọn Cảm xúc --
+                    Chọn cảm xúc
                   </option>
-                  {MOCK_MOODS.map((m) => (
+                  {moods.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
@@ -602,10 +573,170 @@ export default function SongManagementPage() {
               Hủy bỏ
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
-              {editingSong ? "Cập nhật dữ liệu" : "Đăng Biên mục"}
+              {editingSong ? "Cập nhật dữ liệu" : "Xác nhận"}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* DETAIL MODAL */}
+      <Modal
+        isOpen={!!detailSong}
+        onClose={() => setDetailSong(null)}
+        title="Chi tiết bài hát"
+        maxWidth="max-w-2xl"
+      >
+        {detailSong && (
+          <div className="mt-4 space-y-5 max-h-[70vh] overflow-y-auto pr-1 scrollbar-hide">
+            {/* Song header */}
+            <div className="flex items-center gap-4 pb-4 border-b border-gray-800">
+              <div className="w-14 h-14 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                <Music className="w-6 h-6 text-gray-500" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-white truncate">
+                  {detailSong.name}
+                </h3>
+                <p className="text-sm text-gray-400 truncate">
+                  {detailSong.author || "Không rõ nghệ sĩ"}
+                </p>
+              </div>
+            </div>
+
+            {/* Thông tin cơ bản */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                Thông tin cơ bản
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">ID</p>
+                  <p className="text-sm text-white font-medium">
+                    #{detailSong.id}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Track Hash</p>
+                  <p
+                    className="text-sm text-white font-medium font-mono truncate"
+                    title={detailSong.track_hash}
+                  >
+                    {detailSong.track_hash || "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Thể loại</p>
+                  <p className="text-sm text-white font-medium">
+                    {detailSong.genre || "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Thời lượng</p>
+                  <p className="text-sm text-white font-medium">
+                    {formatDuration(detailSong.duration)}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Spotify ID</p>
+                  <p
+                    className="text-sm text-white font-medium font-mono truncate"
+                    title={detailSong.spotify_id}
+                  >
+                    {detailSong.spotify_id || "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Ngày phát hành</p>
+                  <p className="text-sm text-white font-medium">
+                    {detailSong.release_date || "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3 col-span-2">
+                  <p className="text-xs text-gray-500 mb-1">Audio Link</p>
+                  <p
+                    className="text-sm text-white font-medium truncate"
+                    title={detailSong.audio_link}
+                  >
+                    {detailSong.audio_link ? (
+                      <a
+                        href={detailSong.audio_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-green-400 hover:underline"
+                      >
+                        {detailSong.audio_link}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3 col-span-2">
+                  <p className="text-xs text-gray-500 mb-1">Tags</p>
+                  <p className="text-sm text-white font-medium">
+                    {detailSong.tags || "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg p-3 col-span-2">
+                  <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
+                  <p className="text-sm text-white font-medium">
+                    {detailSong.created_at || "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Chỉ số âm nhạc Spotify */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                Chỉ số âm nhạc Spotify
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Danceability", value: detailSong.danceability },
+                  { label: "Energy", value: detailSong.energy },
+                  {
+                    label: "Loudness",
+                    value: detailSong.loudness,
+                    suffix: " dB",
+                  },
+                  { label: "Speechiness", value: detailSong.speechiness },
+                  { label: "Acousticness", value: detailSong.acousticness },
+                  {
+                    label: "Instrumentalness",
+                    value: detailSong.instrumentalness,
+                  },
+                  { label: "Liveness", value: detailSong.liveness },
+                  { label: "Valence", value: detailSong.valence },
+                  { label: "Tempo", value: detailSong.tempo, suffix: " BPM" },
+                  { label: "Key", value: detailSong.song_key },
+                  {
+                    label: "Mode",
+                    value:
+                      detailSong.mode != null
+                        ? detailSong.mode === 1
+                          ? "Major"
+                          : "Minor"
+                        : null,
+                  },
+                  { label: "Time Signature", value: detailSong.time_signature },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="bg-gray-800/50 rounded-lg p-3"
+                  >
+                    <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                    <p className="text-sm text-white font-medium">
+                      {item.value != null
+                        ? `${item.value}${item.suffix || ""}`
+                        : "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
