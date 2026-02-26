@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from .routers import auth, users, songs, genres, moods, interactions, playlists, recommendations, admin
 
 app = FastAPI(

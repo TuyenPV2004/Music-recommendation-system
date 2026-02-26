@@ -3,11 +3,11 @@ from ..database import Base
 
 
 class UserSongInteraction(Base):
-    __tablename__ = "User_Song_Interaction"
+    __tablename__ = "user_song_interaction"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    user_id         = Column(Integer, ForeignKey("User.id", ondelete="CASCADE"), nullable=False)
-    song_id         = Column(Integer, ForeignKey("Song.id", ondelete="CASCADE"), nullable=False)
+    user_id         = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    song_id         = Column(Integer, ForeignKey("song.id", ondelete="CASCADE"), nullable=False)
     listen_count    = Column(Integer, nullable=False, default=0)
     rate            = Column(Float, nullable=True)
     last_listen_at  = Column(DateTime, nullable=True)

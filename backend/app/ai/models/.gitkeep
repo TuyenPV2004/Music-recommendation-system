@@ -1,0 +1,4 @@
+# Thư mục này chứa file model PhoBERT (best_model.pt)
+# File .pt KHÔNG được commit lên git vì quá nặng (~400MB)
+# Download tại: [Cập nhật link Google Drive vào đây]
+# Sau khi download, đặt file vào: backend/app/ai/models/best_model.pt

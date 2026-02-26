@@ -20,6 +20,17 @@ dist-ssr/
 *.sw?
 module_1/
 uit_vsmec/
+
+# Model files (quá nặng, không push git — dùng Google Drive)
+*.pt
+*.pth
+*.pkl
+backend/app/ai/models/*.pt
+
+# -------------------------
+# Backend (Python / FastAPI)
+# -------------------------
+# Python cache
 __pycache__/
 **/__pycache__/
 *.py[cod]

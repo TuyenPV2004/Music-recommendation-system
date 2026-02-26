@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Play,
@@ -9,44 +9,64 @@ import {
   Share2,
   MoreHorizontal,
   ListMusic,
+  Loader2,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
+import Modal from "../../components/ui/Modal";
 import { toast } from "react-toastify";
-
-// Mock Data for a single song
-const MOCK_SONG = {
-  id: "1",
-  title: "Có Chắc Yêu Là Đây",
-  artist: "Sơn Tùng M-TP",
-  album: "Đĩa đơn",
-  releaseDate: "05/07/2020",
-  duration: "3:22",
-  cover:
-    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=600&fit=crop",
-  genre: "Pop, R&B",
-  listens: "125,430,121",
-  lyrics: `Anh đang mơ hay đang tỉnh giấc
-Nhìn em lung linh bao la muôn vàn tia nắng
-Trong tim anh đang rung lên từng nhịp
-... 
-(Mocked Lyrics)`,
-};
-
-// Mock Playlists for "Add to playlist" modal
-const MOCK_USER_PLAYLISTS = [
-  { id: 1, name: "Nhạc Chill Mỗi Tối" },
-  { id: 2, name: "Nhạc Tập Tập Thể Dục" },
-];
+import { songAPI, playlistAPI } from "../../services/api";
 
 export default function SongDetailPage() {
-  const { id } = useParams(); // Use this to fetch data
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [song, setSong] = useState(MOCK_SONG);
+  // ── Data state ───────────────────────────────────────────────────────────────
+  const [song, setSong] = useState(null);
+  const [similarSongs, setSimilarSongs] = useState([]);   // bài hát tương tự
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  // ── UI state ───────────────────────────────────────────────────────────────
   const [isPlaying, setIsPlaying] = useState(false);
-  const [rating, setRating] = useState(0); // 0-5 stars
+  const [rating, setRating] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [userPlaylists, setUserPlaylists] = useState([]);
+
+  // ── Fetch dữ liệu mỗi khi id thay đổi (navigate giữa các bài hát tương tự) ────────
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSong = async () => {
+      setIsPageLoading(true);
+      try {
+        // GET /api/songs/{id}?similar_limit=8
+        // Response: { success, data: SongDetail, similar_songs: SongBriefWithScore[] }
+        const res = await songAPI.detail(id, { similar_limit: 8 });
+        if (!cancelled) {
+          setSong(res.data);
+          setSimilarSongs(res.similar_songs || []);
+          setRating(0);
+          setIsPlaying(false);
+        }
+      } catch (err) {
+        if (!cancelled) toast.error("Không thể tải bài hát. Thử lại sau!");
+      } finally {
+        if (!cancelled) setIsPageLoading(false);
+      }
+    };
+
+    // Fetch danh sách playlist của user (để hiển thị trong modal "Thêm vào Playlist")
+    const fetchPlaylists = async () => {
+      try {
+        const res = await playlistAPI.list();
+        if (!cancelled) setUserPlaylists(res.data || res || []);
+      } catch (_) { /* Không bắt buộc, modal vẫn hoạt động */ }
+    };
+
+    fetchSong();
+    fetchPlaylists();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handlePlayToggle = () => {
     setIsPlaying(!isPlaying);
@@ -61,10 +81,21 @@ export default function SongDetailPage() {
   };
 
   const handleAddToPlaylist = (playlistId, playlistName) => {
-    // Mock API call POST /api/playlists/{playlistId}/songs
+    // TODO: gọi playlistAPI.addSong(playlistId, { song_id: song.id })
     toast.success(`Đã thêm "${song.title}" vào playlist "${playlistName}"`);
     setIsPlaylistModalOpen(false);
   };
+
+  // ── Loading state ───────────────────────────────────────────────────────────
+  if (isPageLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-green-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!song) return null;
 
   return (
     <div className="h-full flex flex-col relative">
@@ -197,6 +228,34 @@ export default function SongDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Bài hát tương tự (cosine similarity trên audio features) */}
+          {similarSongs.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Tương tự</h2>
+              <div className="space-y-1">
+                {similarSongs.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => navigate(`/songs/${s.id}`)}
+                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 text-left transition-colors group"
+                  >
+                    <img
+                      src={s.cover || "https://via.placeholder.com/40"}
+                      alt={s.title}
+                      className="w-10 h-10 rounded object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate group-hover:text-green-400 transition-colors">
+                        {s.title}
+                      </p>
+                      <p className="text-gray-400 text-xs truncate">{s.artist}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -216,16 +275,20 @@ export default function SongDetailPage() {
         </p>
 
         <div className="space-y-2 max-h-60 overflow-y-auto mb-6 pr-2 custom-scrollbar">
-          {MOCK_USER_PLAYLISTS.map((playlist) => (
-            <button
-              key={playlist.id}
-              onClick={() => handleAddToPlaylist(playlist.id, playlist.name)}
-              className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-800 text-left transition-colors group border border-transparent hover:border-gray-700"
-            >
-              <span className="text-white font-medium">{playlist.name}</span>
-              <PlusCircle className="w-5 h-5 text-gray-500 group-hover:text-green-400" />
-            </button>
-          ))}
+          {userPlaylists.length > 0 ? (
+            userPlaylists.map((playlist) => (
+              <button
+                key={playlist.id}
+                onClick={() => handleAddToPlaylist(playlist.id, playlist.name)}
+                className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-800 text-left transition-colors group border border-transparent hover:border-gray-700"
+              >
+                <span className="text-white font-medium">{playlist.name}</span>
+                <PlusCircle className="w-5 h-5 text-gray-500 group-hover:text-green-400" />
+              </button>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-4">Bạn chưa có playlist nào.</p>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-800">

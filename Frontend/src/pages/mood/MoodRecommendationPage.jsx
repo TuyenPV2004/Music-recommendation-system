@@ -1,82 +1,55 @@
 import React, { useState } from "react";
 import Button from "../../components/ui/Button";
 import SongCard from "../../components/song/SongCard";
-import { Sparkles, Loader2, Smile, Frown, Coffee } from "lucide-react";
+import { Sparkles, Loader2, Smile, Frown, Coffee, Zap, AlertCircle, Meh } from "lucide-react";
 import { toast } from "react-toastify";
+import { recommendAPI } from "../../services/api";
+import usePlayerStore from "../../store/usePlayerStore";
 
-const MOCK_MOOD_RESULTS = {
-  vui_ve: {
+// Ánh xạ emotion label (lowercase, khớp với detected_mood từ PhoBERT API)
+// sang config hiển thị UI. Chỉ sửa file này khi muốn đổi màu sắc / icon.
+const EMOTION_UI_CONFIG = {
+  enjoyment: {
     label: "Vui vẻ, Hứng khởi",
     icon: <Smile className="w-8 h-8 text-yellow-400" />,
     color: "text-yellow-400",
     bg: "bg-yellow-400/10 border-yellow-400/20",
-    songs: [
-      {
-        id: 101,
-        title: "Waiting For You",
-        artist: "MONO",
-        cover:
-          "https://i.ytimg.com/vi/u6Y96g_yjnQ/maxresdefault.jpg",
-      },
-      {
-        id: 102,
-        title: "See Tình",
-        artist: "Hoàng Thùy Linh",
-        cover:
-          "https://image-cdn.nct.vn/song/share/2022/02/20/5/f/b/1/1645341333426.jpg",
-      },
-      {
-        id: 106,
-        title: "Đi Đu Đưa Đi",
-        artist: "Bích Phương",
-        cover:
-          "https://photo-resize-zmp3.zmdcdn.me/w600_r300x169_jpeg/thumb_video/9/9/e/e/99ee33f170ea4841485d21ec3f76321f.jpg",
-      },
-    ],
   },
-  buon_ba: {
-    label: "Buồn bã / Suy tư",
+  sadness: {
+    label: "Buồn bã, Suy tư",
     icon: <Frown className="w-8 h-8 text-blue-400" />,
     color: "text-blue-400",
     bg: "bg-blue-400/10 border-blue-400/20",
-    songs: [
-      {
-        id: 103,
-        title: "Chạm Khẽ Tim Anh Một Chút Thôi",
-        artist: "Noo Phước Thịnh",
-        cover:
-          "https://images.unsplash.com/photo-1516280440502-86111aebea23?w=300&h=300&fit=crop&q=80",
-      },
-      {
-        id: 107,
-        title: "Nước Mắt Em Lau Bằng Tình Yêu Mới",
-        artist: "Da LAB, Tóc Tiên",
-        cover:
-          "https://images.unsplash.com/photo-1493225457124-a1a2a5f0a469?w=300&h=300&fit=crop&q=80",
-      },
-    ],
   },
-  thu_gian: {
-    label: "Thư giãn / Lofi",
+  anger: {
+    label: "Tức giận, Bực bội",
+    icon: <Zap className="w-8 h-8 text-red-400" />,
+    color: "text-red-400",
+    bg: "bg-red-400/10 border-red-400/20",
+  },
+  fear: {
+    label: "Lo lắng, Sợ hãi",
+    icon: <AlertCircle className="w-8 h-8 text-purple-400" />,
+    color: "text-purple-400",
+    bg: "bg-purple-400/10 border-purple-400/20",
+  },
+  disgust: {
+    label: "Chán nản, Khó chịu",
+    icon: <Meh className="w-8 h-8 text-gray-400" />,
+    color: "text-gray-400",
+    bg: "bg-gray-400/10 border-gray-400/20",
+  },
+  surprise: {
+    label: "Bất ngờ, Hào hứng",
+    icon: <Sparkles className="w-8 h-8 text-orange-400" />,
+    color: "text-orange-400",
+    bg: "bg-orange-400/10 border-orange-400/20",
+  },
+  other: {
+    label: "Bình tâm, Thư giãn",
     icon: <Coffee className="w-8 h-8 text-green-400" />,
     color: "text-green-400",
     bg: "bg-green-400/10 border-green-400/20",
-    songs: [
-      {
-        id: 104,
-        title: "Thức Giấc",
-        artist: "Da LAB",
-        cover:
-          "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop&q=80",
-      },
-      {
-        id: 105,
-        title: "Bài Này Chill Phết",
-        artist: "Đen, Min",
-        cover:
-          "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop&q=80",
-      },
-    ],
   },
 };
 
@@ -84,6 +57,7 @@ export default function MoodRecommendationPage() {
   const [statusText, setStatusText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const { setPlaylist } = usePlayerStore();
 
   const handleAnalyze = async () => {
     if (!statusText.trim()) {
@@ -94,32 +68,30 @@ export default function MoodRecommendationPage() {
     setIsLoading(true);
     setResult(null);
 
-    // TODO: Connect to backend API: POST /api/recommendations/mood
+    // POST /api/recommendations/mood { text }
+    // Response: { detected_mood, confidence, blend_info, songs: [{id,title,artist,cover,similarity}] }
     try {
-      // Mock analyzing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const data = await recommendAPI.mood({ text: statusText });
 
-      const text = statusText.toLowerCase();
-      let moodKey = "thu_gian"; // default
-      if (
-        text.includes("vui") ||
-        text.includes("tuyệt") ||
-        text.includes("hào hứng")
-      ) {
-        moodKey = "vui_ve";
-      } else if (
-        text.includes("buồn") ||
-        text.includes("chán") ||
-        text.includes("tệ") ||
-        text.includes("khóc")
-      ) {
-        moodKey = "buon_ba";
-      }
+      // Map detected_mood → UI config (màu sắc, icon, nhãn hiển thị)
+      const moodKey = (data.detected_mood || "other").toLowerCase();
+      const uiConfig = EMOTION_UI_CONFIG[moodKey] || EMOTION_UI_CONFIG.other;
 
-      setResult(MOCK_MOOD_RESULTS[moodKey]);
+      const songs = data.songs || [];
+
+      // Lưu playlist vào store để next/prev hoạt động
+      setPlaylist(songs);
+
+      setResult({
+        ...uiConfig,
+        detected_mood: data.detected_mood,
+        confidence: data.confidence,
+        blend_info: data.blend_info,
+        songs,
+      });
       toast.success("Đã phân tích xong cảm xúc của bạn!");
     } catch (error) {
-      toast.error("Không thể phân tích cảm xúc lúc này. Thử lại sau!");
+      toast.error(error.message || "Không thể phân tích cảm xúc lúc này. Thử lại sau!");
     } finally {
       setIsLoading(false);
     }
@@ -194,6 +166,14 @@ export default function MoodRecommendationPage() {
                   <h3 className={`text-2xl font-bold ${result.color}`}>
                     {result.label}
                   </h3>
+                  {/* Hiển thị độ tự tin và chiến lược blend */}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {result.blend_info?.strategy === "blend_top2" && (
+                      <span className="ml-2 text-gray-600">
+                        (kết hợp {result.blend_info.emotions_used.join(" + ")})
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="text-center md:text-right">
@@ -212,7 +192,7 @@ export default function MoodRecommendationPage() {
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 {result.songs.map((song) => (
-                  <SongCard key={song.id} song={song} />
+                  <SongCard key={song.id} song={song} playlist={result.songs} />
                 ))}
               </div>
             </div>

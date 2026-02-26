@@ -3,11 +3,17 @@ from typing import Optional, List
 
 
 class SongBrief(BaseModel):
-    """Dùng cho SongCard component: {id, title, artist, cover}"""
+    """Dùng cho SongCard component: {id, title, artist, preview_url}"""
     id: int
     title: str
     artist: Optional[str] = None
-    cover: Optional[str] = None
+    cover: Optional[str] = None       # ảnh bìa (nếu có)
+    preview_url: Optional[str] = None  # URL MP3 30s demo
+
+
+class SongBriefWithScore(SongBrief):
+    """SongBrief + cosine similarity score (dùng cho similar songs / mood results)"""
+    similarity: Optional[float] = None
 
 
 class SongDetail(BaseModel):
@@ -27,6 +33,13 @@ class SongDetail(BaseModel):
     energy: Optional[float] = None
     valence: Optional[float] = None
     tempo: Optional[float] = None
+
+
+class SongDetailResponse(BaseModel):
+    """Response đầy đủ cho GET /songs/{id}: chi tiết + similar songs"""
+    success: bool = True
+    data: SongDetail
+    similar_songs: List[SongBriefWithScore] = []
 
 
 class SongListResponse(BaseModel):
