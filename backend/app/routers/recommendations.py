@@ -119,7 +119,8 @@ def mood_recommendation(
             id=song.id,
             title=song.name,
             artist=song.author or "Unknown",
-            cover=song.audio_link or "",
+            cover=None,
+            preview_url=song.audio_link or None,
             similarity=round(score, 4),
         )
         for song, score in ranked

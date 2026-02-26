@@ -4,6 +4,7 @@ import SongCard from "../../components/song/SongCard";
 import { Sparkles, Loader2, Smile, Frown, Coffee, Zap, AlertCircle, Meh } from "lucide-react";
 import { toast } from "react-toastify";
 import { recommendAPI } from "../../services/api";
+import usePlayerStore from "../../store/usePlayerStore";
 
 // Ánh xạ emotion label (lowercase, khớp với detected_mood từ PhoBERT API)
 // sang config hiển thị UI. Chỉ sửa file này khi muốn đổi màu sắc / icon.
@@ -56,6 +57,7 @@ export default function MoodRecommendationPage() {
   const [statusText, setStatusText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const { setPlaylist } = usePlayerStore();
 
   const handleAnalyze = async () => {
     if (!statusText.trim()) {
@@ -75,12 +77,17 @@ export default function MoodRecommendationPage() {
       const moodKey = (data.detected_mood || "other").toLowerCase();
       const uiConfig = EMOTION_UI_CONFIG[moodKey] || EMOTION_UI_CONFIG.other;
 
+      const songs = data.songs || [];
+
+      // Lưu playlist vào store để next/prev hoạt động
+      setPlaylist(songs);
+
       setResult({
-        ...uiConfig,                          // label, icon, color, bg
-        detected_mood: data.detected_mood,    // tên gốc từ API
-        confidence: data.confidence,          // 0.0 – 1.0
-        blend_info: data.blend_info,          // { strategy, emotions_used, weights }
-        songs: data.songs || [],              // [{id, title, artist, cover, similarity}]
+        ...uiConfig,
+        detected_mood: data.detected_mood,
+        confidence: data.confidence,
+        blend_info: data.blend_info,
+        songs,
       });
       toast.success("Đã phân tích xong cảm xúc của bạn!");
     } catch (error) {
@@ -161,7 +168,6 @@ export default function MoodRecommendationPage() {
                   </h3>
                   {/* Hiển thị độ tự tin và chiến lược blend */}
                   <p className="text-xs text-gray-500 mt-1">
-                    Độ chính xác: {Math.round((result.confidence || 0) * 100)}%
                     {result.blend_info?.strategy === "blend_top2" && (
                       <span className="ml-2 text-gray-600">
                         (kết hợp {result.blend_info.emotions_used.join(" + ")})
@@ -186,7 +192,7 @@ export default function MoodRecommendationPage() {
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 {result.songs.map((song) => (
-                  <SongCard key={song.id} song={song} />
+                  <SongCard key={song.id} song={song} playlist={result.songs} />
                 ))}
               </div>
             </div>

@@ -4,7 +4,7 @@ from ..database import Base
 
 
 class User(Base):
-    __tablename__ = "User"
+    __tablename__ = "user"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
     user_hash  = Column(String(40), unique=True, nullable=False)

@@ -4,10 +4,10 @@ from ..database import Base
 
 
 class ResetPasswordToken(Base):
-    __tablename__ = "Reset_Password_Token"
+    __tablename__ = "reset_password_token"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
-    user_id    = Column(Integer, ForeignKey("User.id", ondelete="CASCADE"), nullable=False)
+    user_id    = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     token      = Column(String(512), nullable=False)
     used_at    = Column(DateTime, nullable=True)
     expired_at = Column(DateTime, nullable=False)

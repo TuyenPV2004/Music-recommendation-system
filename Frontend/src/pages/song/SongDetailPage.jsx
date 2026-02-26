@@ -257,6 +257,7 @@ export default function SongDetailPage() {
             </div>
           )}
         </div>
+      </div>
 
       {/* Add to Playlist Modal */}
       <Modal

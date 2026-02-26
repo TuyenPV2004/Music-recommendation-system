@@ -3,11 +3,12 @@ from typing import Optional, List
 
 
 class SongBrief(BaseModel):
-    """Dùng cho SongCard component: {id, title, artist, cover}"""
+    """Dùng cho SongCard component: {id, title, artist, preview_url}"""
     id: int
     title: str
     artist: Optional[str] = None
-    cover: Optional[str] = None
+    cover: Optional[str] = None       # ảnh bìa (nếu có)
+    preview_url: Optional[str] = None  # URL MP3 30s demo
 
 
 class SongBriefWithScore(SongBrief):
