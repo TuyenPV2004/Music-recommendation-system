@@ -2,3 +2,7 @@
 # File .pt KHÔNG được commit lên git vì quá nặng (~400MB)
 # Download tại: [Cập nhật link Google Drive vào đây]
 # Sau khi download, đặt file vào: backend/app/ai/models/best_model.pt
+
+# Thư mục này chứa folder recommendation
+# Download tại: https://drive.google.com/drive/folders/1ag4jHHZV0V9K2613AJ2yvO88r_FyGUJs?usp=sharing
+# Sau khi download, đặt vào: backend/app/ai/models/recommendation/

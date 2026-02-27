@@ -7,6 +7,7 @@ from ..models.user import User
 from ..models.song import Song, Genre, Mood
 from ..models.interaction import UserSongInteraction
 from ..models.playlist import Playlist
+from ..services import recommendation_service
 
 router = APIRouter()
 
@@ -187,3 +188,8 @@ def admin_list_playlists(
         "page": page,
         "limit": limit,
     }
+
+@router.post("/reload-model")
+def reload_model():
+    recommendation_service.reload()
+    return {"message": "Model reloaded successfully"}

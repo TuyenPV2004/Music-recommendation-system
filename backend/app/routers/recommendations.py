@@ -19,7 +19,7 @@ HAI ENDPOINT:
 MUốN THAY ĐỔI NGƯỠNG BLEND:
   Sửa MOOD_BLEND_THRESHOLD trong ai/similarity.py, không sửa file này.
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
@@ -34,13 +34,15 @@ from ..schemas.recommendation import (
     HybridRecommendationResponse,
 )
 from ..schemas.song import SongBriefWithScore
-from ..ai import mood_predictor, song_recommender
+from ..ai import mood_predictor
 from ..ai.similarity import (
     build_target_vector,
     rank_songs_by_target,
     MOOD_BLEND_THRESHOLD,
     DEFAULT_MOOD_LIMIT,
 )
+from ..services import recommendation_service
+from ..services.song import SongService
 
 router = APIRouter()
 
@@ -134,42 +136,20 @@ def mood_recommendation(
         songs=songs_out,
     )
 
-
-@router.get("/hybrid", response_model=HybridRecommendationResponse)
-def hybrid_recommendation(
-    limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+@router.get("/recommend/{user_id}", response_model=HybridRecommendationResponse)
+def get_recommendations(
+    user_id: str,
+    #user: User = Depends(get_current_user),
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_db)
 ):
-    """
-    Gợi ý bài hát theo user (Module 2 LightFM)
 
-    Flow:
-    1. Gọi Module 2 để lấy danh sách track_hash
-    2. Nếu có kết quả → query DB lấy Song objects
-    3. Nếu Module 2 chưa tích hợp (trả []) → fallback lấy bài phổ biến nhất
-    """
-    # 1. Gọi Module 2
-    track_hashes = song_recommender.recommend(user.id, k=limit)
-
-    if track_hashes:
-        # 2. Query songs bằng track_hash
-        songs = db.query(Song).filter(Song.track_hash.in_(track_hashes)).all()
-    else:
-        # 3. Fallback: bài hát phổ biến nhất (nhiều listen_count nhất)
-        songs = (
-            db.query(Song)
-            .join(UserSongInteraction, UserSongInteraction.song_id == Song.id)
-            .group_by(Song.id)
-            .order_by(sql_func.sum(UserSongInteraction.listen_count).desc())
-            .limit(limit)
-            .all()
-        )
-
-        # Nếu chưa có interaction nào → lấy songs mới nhất
-        if not songs:
-            songs = db.query(Song).order_by(Song.created_at.desc()).limit(limit).all()
+    song_ids = recommendation_service.recommend_ids(user_id, page, page_size)
+    print(song_ids)
+    songService = SongService(db)
+    songs = songService.get_songs_by_ids(song_ids)
 
     return HybridRecommendationResponse(
-        recommendations=[_song_to_brief(s) for s in songs],
+        recommendations=[_song_to_brief(s) for s in songs]
     )
