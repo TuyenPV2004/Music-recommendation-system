@@ -5,23 +5,30 @@ from sklearn.metrics.pairwise import cosine_similarity
 from threading import Lock
 
 BASE_DIR = Path(__file__).resolve().parent  # app/ai
-MODEL_DIR = BASE_DIR / "models" / "recommendation"
+MODEL_DIR = Path("/shared_models/recommendation")
 
 class RecommendationService:
     def __init__(self):
         self.lock = Lock()
+        self.active_version_dir = self._get_active_version_dir()
         self._load_artifacts()
+
+    def _get_active_version_dir(self):
+        active_file = MODEL_DIR / "active_version.txt"
+        with open(active_file, "r") as f:
+            version = f.read().strip()
+        return MODEL_DIR / "versions" / version
 
     # LOAD / RELOAD MODEL
     def _load_artifacts(self):
 
-        self.model = joblib.load(MODEL_DIR / "lightfm_model.pkl")
-        self.user_encoder = joblib.load(MODEL_DIR / "user_encoder.pkl")
-        self.item_encoder = joblib.load(MODEL_DIR / "item_encoder.pkl")
+        self.model = joblib.load(self.active_version_dir / "lightfm_model.pkl")
+        self.user_encoder = joblib.load(self.active_version_dir / "user_encoder.pkl")
+        self.item_encoder = joblib.load(self.active_version_dir / "item_encoder.pkl")
 
-        self.user_features = joblib.load(MODEL_DIR / "user_features_matrix.pkl")
-        self.item_features = joblib.load(MODEL_DIR / "item_features_matrix.pkl")
-        self.interaction_train = joblib.load(MODEL_DIR / "interaction_train.pkl")
+        self.user_features = joblib.load(self.active_version_dir / "user_features_matrix.pkl")
+        self.item_features = joblib.load(self.active_version_dir / "item_features_matrix.pkl")
+        self.interaction_train = joblib.load(self.active_version_dir / "interaction_train.pkl")
 
         # 🔥 recompute popularity
         item_popularity = np.array(

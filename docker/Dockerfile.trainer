@@ -1,0 +1,11 @@
+FROM python:3.10
+
+WORKDIR /app
+
+COPY ../backend /app/backend
+
+COPY ../trainer /app/trainer
+
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+
+CMD ["sh"]

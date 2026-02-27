@@ -19,6 +19,13 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7
+    container_name: redis-broker
+    restart: always
+    ports:
+      - "6379:6379"
+
   backend:
     build:
       context: ..
@@ -28,9 +35,10 @@ services:
       - "8000:8000"
     volumes:
       - ../backend:/app
+      - ../shared_models:/shared_models
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=mysql+pymysql://root:123456@db:3306/music_recommendation_system_db
+      # - DATABASE_URL=mysql+pymysql://root:123456@db:3306/music_recommendation_system_db
       - JWT_SECRET_KEY=your-secret-key-here
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRE_MINUTES=1440
@@ -41,7 +49,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      redis:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  trainer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.trainer
+    volumes:
+      - ../shared_models:/shared_models
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - backend
+      - redis
+      - db
+    command: >
+      sh -c "
+      celery -A trainer.celery_app.celery beat --loglevel=info &
+      celery -A trainer.celery_app.celery worker --loglevel=info
+      "
 
   frontend:
     build:
@@ -57,3 +85,4 @@ services:
 
 volumes:
   mysql_data:
+  models_volume:
