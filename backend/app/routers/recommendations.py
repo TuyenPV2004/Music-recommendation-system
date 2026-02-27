@@ -146,7 +146,6 @@ def get_recommendations(
 ):
 
     song_ids = recommendation_service.recommend_ids(user_id, page, page_size)
-    print(song_ids)
     songService = SongService(db)
     songs = songService.get_songs_by_ids(song_ids)
 
