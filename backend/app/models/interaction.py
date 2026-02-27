@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
 from ..database import Base
 
 
@@ -6,7 +6,7 @@ class UserSongInteraction(Base):
     __tablename__ = "user_song_interaction"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    user_id         = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id         = Column(String(40), ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False)
     song_id         = Column(Integer, ForeignKey("song.id", ondelete="CASCADE"), nullable=False)
     listen_count    = Column(Integer, nullable=False, default=0)
     rate            = Column(Float, nullable=True)

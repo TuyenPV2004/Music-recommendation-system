@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import Button from "../../components/ui/Button";
 import SongCard from "../../components/song/SongCard";
-import { Sparkles, Loader2, Smile, Frown, Coffee, Zap, AlertCircle, Meh } from "lucide-react";
+import { Sparkles, Loader2, Smile, Frown, Coffee } from "lucide-react";
 import { toast } from "react-toastify";
-import { recommendAPI } from "../../services/api";
-import usePlayerStore from "../../store/usePlayerStore";
 
-// Ánh xạ emotion label (lowercase, khớp với detected_mood từ PhoBERT API)
-// sang config hiển thị UI. Chỉ sửa file này khi muốn đổi màu sắc / icon.
-const EMOTION_UI_CONFIG = {
+import { recommendAPI } from "../../services/api";
+
+const MOOD_UI_MAP = {
   enjoyment: {
     label: "Vui vẻ, Hứng khởi",
     icon: <Smile className="w-8 h-8 text-yellow-400" />,
@@ -22,34 +20,34 @@ const EMOTION_UI_CONFIG = {
     bg: "bg-blue-400/10 border-blue-400/20",
   },
   anger: {
-    label: "Tức giận, Bực bội",
-    icon: <Zap className="w-8 h-8 text-red-400" />,
-    color: "text-red-400",
-    bg: "bg-red-400/10 border-red-400/20",
+    label: "Tức giận",
+    icon: <Frown className="w-8 h-8 text-red-500" />,
+    color: "text-red-500",
+    bg: "bg-red-500/10 border-red-500/20",
   },
   fear: {
-    label: "Lo lắng, Sợ hãi",
-    icon: <AlertCircle className="w-8 h-8 text-purple-400" />,
+    label: "Sợ hãi, Lo âu",
+    icon: <Frown className="w-8 h-8 text-purple-400" />,
     color: "text-purple-400",
     bg: "bg-purple-400/10 border-purple-400/20",
   },
-  disgust: {
-    label: "Chán nản, Khó chịu",
-    icon: <Meh className="w-8 h-8 text-gray-400" />,
-    color: "text-gray-400",
-    bg: "bg-gray-400/10 border-gray-400/20",
-  },
   surprise: {
-    label: "Bất ngờ, Hào hứng",
+    label: "Ngạc nhiên, Bất ngờ",
     icon: <Sparkles className="w-8 h-8 text-orange-400" />,
     color: "text-orange-400",
     bg: "bg-orange-400/10 border-orange-400/20",
   },
+  disgust: {
+    label: "Khó chịu, Chán ghét",
+    icon: <Frown className="w-8 h-8 text-green-600" />,
+    color: "text-green-600",
+    bg: "bg-green-600/10 border-green-600/20",
+  },
   other: {
-    label: "Bình tâm, Thư giãn",
-    icon: <Coffee className="w-8 h-8 text-green-400" />,
-    color: "text-green-400",
-    bg: "bg-green-400/10 border-green-400/20",
+    label: "Thư giãn, Khác",
+    icon: <Coffee className="w-8 h-8 text-gray-400" />,
+    color: "text-gray-400",
+    bg: "bg-gray-400/10 border-gray-400/20",
   },
 };
 
@@ -57,7 +55,6 @@ export default function MoodRecommendationPage() {
   const [statusText, setStatusText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const { setPlaylist } = usePlayerStore();
 
   const handleAnalyze = async () => {
     if (!statusText.trim()) {
@@ -68,46 +65,39 @@ export default function MoodRecommendationPage() {
     setIsLoading(true);
     setResult(null);
 
-    // POST /api/recommendations/mood { text }
-    // Response: { detected_mood, confidence, blend_info, songs: [{id,title,artist,cover,similarity}] }
     try {
-      const data = await recommendAPI.mood({ text: statusText });
+      const response = await recommendAPI.mood({ text: statusText });
 
-      // Map detected_mood → UI config (màu sắc, icon, nhãn hiển thị)
-      const moodKey = (data.detected_mood || "other").toLowerCase();
-      const uiConfig = EMOTION_UI_CONFIG[moodKey] || EMOTION_UI_CONFIG.other;
-
-      const songs = data.songs || [];
-
-      // Lưu playlist vào store để next/prev hoạt động
-      setPlaylist(songs);
+      const moodKey = response.detected_mood
+        ? response.detected_mood.toLowerCase()
+        : "other";
+      const uiConfig = MOOD_UI_MAP[moodKey] || MOOD_UI_MAP.other;
 
       setResult({
         ...uiConfig,
-        detected_mood: data.detected_mood,
-        confidence: data.confidence,
-        blend_info: data.blend_info,
-        songs,
+        songs: response.songs || [],
+        confidence: response.confidence,
       });
       toast.success("Đã phân tích xong cảm xúc của bạn!");
     } catch (error) {
-      toast.error(error.message || "Không thể phân tích cảm xúc lúc này. Thử lại sau!");
+      console.error(error);
+      toast.error("Không thể phân tích cảm xúc lúc này. Thử lại sau!");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="h-full flex flex-col p-6 lg:p-10">
-      <div className="max-w-4xl w-full mx-auto space-y-10 mt-8">
+    <div className="h-full flex flex-col p-6 lg:p-10 overflow-y-auto scrollbar-hide">
+      <div className="max-w-6xl w-full mx-auto space-y-10 mt-8">
         {/* Header section */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
             Âm nhạc theo cảm xúc
           </h1>
           <p className="text-gray-400 text-base md:text-lg max-w-2xl mx-auto">
-            Công nghệ thông minh của chúng tôi sẽ thấu hiểu tâm trạng của bạn qua từng câu chữ và đưa
-            ra những giai điệu đồng điệu nhất.
+            Công nghệ thông minh của chúng tôi sẽ thấu hiểu tâm trạng của bạn
+            qua từng câu chữ và đưa ra những giai điệu đồng điệu nhất.
           </p>
         </div>
 
@@ -166,14 +156,6 @@ export default function MoodRecommendationPage() {
                   <h3 className={`text-2xl font-bold ${result.color}`}>
                     {result.label}
                   </h3>
-                  {/* Hiển thị độ tự tin và chiến lược blend */}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {result.blend_info?.strategy === "blend_top2" && (
-                      <span className="ml-2 text-gray-600">
-                        (kết hợp {result.blend_info.emotions_used.join(" + ")})
-                      </span>
-                    )}
-                  </p>
                 </div>
               </div>
               <div className="text-center md:text-right">
@@ -187,14 +169,29 @@ export default function MoodRecommendationPage() {
 
             {/* Song Recommendations Grid */}
             <div>
-              <h4 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                Danh sách gợi ý
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                {result.songs.map((song) => (
-                  <SongCard key={song.id} song={song} playlist={result.songs} />
-                ))}
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                  Danh sách gợi ý theo cảm xúc "{result.label}"
+                </h4>
+                <span className="text-sm font-medium text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700/50">
+                  {Math.min(result.songs.length, 10)} bài hát
+                </span>
               </div>
+              {result.songs.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                  {result.songs.slice(0, 10).map((song) => (
+                    <SongCard
+                      key={song.id}
+                      song={song}
+                      siblings={result.songs}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  Không tìm thấy bài hát phù hợp với cảm xúc này.
+                </div>
+              )}
             </div>
           </div>
         )}

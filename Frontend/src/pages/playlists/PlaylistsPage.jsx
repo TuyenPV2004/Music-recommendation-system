@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Library,
@@ -7,45 +7,48 @@ import {
   MoreVertical,
   Play,
   Trash2,
+  Loader2,
+  Music2,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import { toast } from "react-toastify";
-
-// Mock Data
-const MOCK_PLAYLISTS = [
-  {
-    id: "1",
-    name: "Nhạc Chill mỗi tối",
-    songCount: 15,
-    cover:
-      "https://i.ytimg.com/vi/hLxB984tHhg/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLChhSEIB64t5xGSSOHwQJCA_4ZT0w",
-  },
-  {
-    id: "2",
-    name: "Nhạc Tik Tok",
-    songCount: 20,
-    cover:
-      "https://cdn11.dienmaycholon.vn/filewebdmclnew/public/userupload/files/Knms/di-dong/nhac-tren-tiktok-duoc-nhieu-nguoi-dung-yeu-thich.jpg",
-  },
-  {
-    id: "3",
-    name: "Nhạc Lofi",
-    songCount: 42,
-    cover:
-      "https://baochauelec.com/cdn/images/lofi-15.jpg",
-  },
-];
+import { playlistAPI } from "../../services/api";
+import useAuthStore from "../../store/useAuthStore";
 
 export default function PlaylistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const navigate = useNavigate();
 
-  const filteredPlaylists = MOCK_PLAYLISTS.filter((p) =>
+  const [playlists, setPlaylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchPlaylists = async () => {
+      try {
+        const res = await playlistAPI.list();
+        setPlaylists(res.data || res || []);
+      } catch (error) {
+        toast.error("Không thể tải danh sách playlist.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPlaylists();
+  }, [isAuthenticated]);
+
+  const filteredPlaylists = playlists.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -55,8 +58,12 @@ export default function PlaylistsPage() {
 
     setIsCreating(true);
     try {
-      // Mock API call POST /api/playlists
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const res = await playlistAPI.create({
+        name: newPlaylistName,
+        is_public: false, // Defaulting to private for now
+      });
+      const data = res.data || res;
+      setPlaylists([...playlists, data]);
       toast.success(`Đã tạo Playlist "${newPlaylistName}" thành công!`);
       setIsModalOpen(false);
       setNewPlaylistName("");
@@ -67,8 +74,32 @@ export default function PlaylistsPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-green-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <Library className="w-16 h-16 text-gray-500 mb-2" />
+        <h2 className="text-2xl font-bold text-white">Bạn chưa đăng nhập</h2>
+        <p className="text-gray-400 max-w-md">
+          Vui lòng đăng nhập để tạo và quản lý danh sách phát các bài hát yêu
+          thích của bạn.
+        </p>
+        <Button onClick={() => navigate("/login")} className="mt-4">
+          Đăng nhập ngay
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col p-6 lg:p-10 relative">
+    <div className="h-full flex flex-col p-6 lg:p-10 relative overflow-y-auto scrollbar-hide">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
@@ -82,7 +113,6 @@ export default function PlaylistsPage() {
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 whitespace-nowrap"
         >
-          <Plus className="w-5 h-5" />
           Tạo Playlist Mới
         </Button>
       </div>
@@ -102,19 +132,15 @@ export default function PlaylistsPage() {
       </div>
 
       {/* Playlists Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 pb-20">
         {filteredPlaylists.map((playlist) => (
           <div
             key={playlist.id}
             className="group relative bg-gray-900/40 hover:bg-gray-800 p-4 rounded-xl transition-all duration-300 cursor-pointer border border-transparent hover:border-gray-700/50"
             onClick={() => navigate(`/playlists/${playlist.id}`)}
           >
-            <div className="relative mb-4 aspect-square rounded-lg overflow-hidden shadow-lg">
-              <img
-                src={playlist.cover}
-                alt={playlist.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
+            <div className="relative mb-4 aspect-square rounded-lg overflow-hidden shadow-lg bg-gray-800 flex items-center justify-center">
+              <Music2 className="w-12 h-12 text-gray-500 group-hover:scale-110 transition-transform duration-500" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-black shadow-xl hover:scale-105 hover:bg-green-400 transition-transform">
                   <Play className="w-6 h-6 ml-1" fill="currentColor" />
@@ -128,13 +154,19 @@ export default function PlaylistsPage() {
               {playlist.name}
             </h3>
             <p className="text-sm text-gray-400 truncate">
-              {playlist.songCount} bài hát
+              {playlist.songCount || 0} bài hát
             </p>
           </div>
         ))}
-        {filteredPlaylists.length === 0 && (
+        {filteredPlaylists.length === 0 && playlists.length > 0 && (
           <div className="col-span-full py-12 text-center text-gray-400">
             Không tìm thấy playlist nào phù hợp.
+          </div>
+        )}
+        {playlists.length === 0 && (
+          <div className="col-span-full py-12 text-center text-gray-400 flex flex-col items-center justify-center space-y-3">
+            <Library className="w-12 h-12 text-gray-600 mb-2" />
+            <p>Bạn chưa có Playlist nào. Hãy tạo mới một Playlist nhé!</p>
           </div>
         )}
       </div>

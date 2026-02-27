@@ -4,12 +4,12 @@ from datetime import date
 
 
 class UserResponse(BaseModel):
-    id: int
+    user_id: str
     name: str
     email: Optional[str] = None
     birth_date: Optional[date] = None
     country: Optional[str] = None
-    sex: Optional[str] = None
+    gender: Optional[str] = None
 
     class Config:
         from_attributes = True

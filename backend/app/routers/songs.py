@@ -141,6 +141,7 @@ def get_song(
             "duration": _ms_to_time(song.duration),
             "cover": song.audio_link or "",
             "genre": genre_name,
+            "genre_id": song.genre_id,
             "listens": f"{total_listens:,}",
             "track_hash": song.track_hash,
             "danceability": song.danceability,

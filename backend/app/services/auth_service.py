@@ -14,7 +14,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_token(user_id: int) -> str:
+def create_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": user_id, "exp": expire},

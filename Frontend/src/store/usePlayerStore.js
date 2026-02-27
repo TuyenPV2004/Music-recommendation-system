@@ -4,38 +4,82 @@ const usePlayerStore = create((set, get) => ({
   currentSong: null,
   isPlaying: false,
   playlist: [],
-  currentIndex: -1,
+  currentRating: 0,
+  isShuffle: false,
+  repeatMode: "off", // "off" | "all" | "one"
 
-  // Phát một bài, tuỳ chọn truyền cả playlist để bật next/prev
-  playSong: (song, playlist = null) => {
-    const list = playlist || get().playlist;
-    const index = list.findIndex((s) => s.id === song.id);
-    set({ currentSong: song, isPlaying: true, playlist: list, currentIndex: index });
-  },
+  // Action to set and play a specific song
+  playSong: (song) =>
+    set({ currentSong: song, isPlaying: true, currentRating: 0 }),
 
-  // Lưu playlist (gọi từ trang kết quả trước khi playSong)
-  setPlaylist: (songs) => set({ playlist: songs }),
-
+  // Actions for playback control
   togglePlay: () =>
     set((state) => ({
       isPlaying: state.currentSong ? !state.isPlaying : false,
     })),
 
-  nextSong: () => {
-    const { playlist, currentIndex } = get();
+  // Playlist management
+  setPlaylist: (songs) => set({ playlist: songs }),
+
+  // Play next song
+  playNext: () => {
+    const { playlist, currentSong, isShuffle } = get();
     if (!playlist.length) return;
-    const next = (currentIndex + 1) % playlist.length;
-    set({ currentSong: playlist[next], isPlaying: true, currentIndex: next });
+
+    if (isShuffle) {
+      const randomIndex = Math.floor(Math.random() * playlist.length);
+      set({
+        currentSong: playlist[randomIndex],
+        isPlaying: true,
+        currentRating: 0,
+      });
+      return;
+    }
+
+    const currentIndex = playlist.findIndex((s) => s.id === currentSong?.id);
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    set({
+      currentSong: playlist[nextIndex],
+      isPlaying: true,
+      currentRating: 0,
+    });
   },
 
-  prevSong: () => {
-    const { playlist, currentIndex } = get();
+  // Play previous song
+  playPrevious: () => {
+    const { playlist, currentSong } = get();
     if (!playlist.length) return;
-    const prev = (currentIndex - 1 + playlist.length) % playlist.length;
-    set({ currentSong: playlist[prev], isPlaying: true, currentIndex: prev });
+
+    const currentIndex = playlist.findIndex((s) => s.id === currentSong?.id);
+    const prevIndex =
+      currentIndex <= 0 ? playlist.length - 1 : currentIndex - 1;
+    set({
+      currentSong: playlist[prevIndex],
+      isPlaying: true,
+      currentRating: 0,
+    });
   },
 
-  closePlayer: () => set({ currentSong: null, isPlaying: false }),
+  // Toggle shuffle
+  toggleShuffle: () => set((state) => ({ isShuffle: !state.isShuffle })),
+
+  // Cycle repeat mode: off -> all -> one -> off
+  toggleRepeat: () =>
+    set((state) => ({
+      repeatMode:
+        state.repeatMode === "off"
+          ? "all"
+          : state.repeatMode === "all"
+            ? "one"
+            : "off",
+    })),
+
+  // Action to set rating (shared between MusicPlayer and SongDetailPage)
+  setRating: (rating) => set({ currentRating: rating }),
+
+  // Action to close the player
+  closePlayer: () =>
+    set({ currentSong: null, isPlaying: false, currentRating: 0 }),
 }));
 
 export default usePlayerStore;

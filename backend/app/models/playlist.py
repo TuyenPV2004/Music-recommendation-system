@@ -17,7 +17,7 @@ class Playlist(Base):
     __tablename__ = "playlist"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
-    user_id    = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id    = Column(String(40), ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False)
     name       = Column(String(255), nullable=False)
     is_public  = Column(SmallInteger, nullable=False, default=0)
     created_at = Column(DateTime, server_default=func.now())
