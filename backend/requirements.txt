@@ -13,3 +13,6 @@ scikit-learn==1.6.1
 lightfm==1.17
 joblib==1.5.1
 pandas==2.2.2
+celery
+redis
+requests

@@ -1,0 +1,16 @@
+# Thư mục này chứa các file artifacts/models
+# Download tại: https://drive.google.com/drive/folders/1ag4jHHZV0V9K2613AJ2yvO88r_FyGUJs?usp=sharing
+# Sau khi download, đặt vào: shared_models/recommendation/versions/v1/
+
+shared_models/
+└── recommendation/
+    ├── active_version.txt
+    └── versions/
+        └── v1/
+            ├── interaction_train.pkl
+            ├── item_encoder.pkl
+            ├── item_features_matrix.pkl
+            ├── lightfm_model.pkl
+            ├── user_encoder.pkl
+            ├── user_features_matrix.pkl
+            └── .gitkeep
