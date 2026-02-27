@@ -3,6 +3,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AuthLayout from "./layouts/AuthLayout";
 import MainLayout from "./layouts/MainLayout";
+import NoSidebarLayout from "./layouts/NoSidebarLayout";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -13,6 +14,7 @@ import ProfilePage from "./pages/profile/ProfilePage";
 import PlaylistsPage from "./pages/playlists/PlaylistsPage";
 import PlaylistDetailPage from "./pages/playlists/PlaylistDetailPage";
 import SongDetailPage from "./pages/song/SongDetailPage";
+import GenresPage from "./pages/genres/GenresPage";
 
 // Admin
 import AdminLayout from "./layouts/AdminLayout";
@@ -23,8 +25,47 @@ import MoodManagementPage from "./pages/admin/MoodManagementPage";
 import SongManagementPage from "./pages/admin/SongManagementPage";
 import PlaylistManagementPage from "./pages/admin/PlaylistManagementPage";
 import InteractionsManagementPage from "./pages/admin/InteractionsManagementPage";
+import useAuthStore from "./store/useAuthStore";
+import { useEffect } from "react";
 
 function App() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const isCheckingAuth = useAuthStore((state) => state.isCheckingAuth);
+
+  useEffect(() => {
+    checkAuth();
+
+    // Fallback an toàn: Nếu backend không phản hồi sau 5 giây thì cho qua
+    const timeout = setTimeout(() => {
+      if (useAuthStore.getState().isCheckingAuth) {
+        console.warn("[Auth] Hết thời gian chờ, tự động bỏ qua Loading...");
+        useAuthStore.setState({
+          isCheckingAuth: false,
+          isAuthenticated: false,
+        });
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [checkAuth]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white space-y-4">
+        <div className="text-xl font-semibold">Đang kiểm tra đăng nhập...</div>
+        <div className="text-sm text-gray-500">
+          Vui lòng chờ trong giây lát (tối đa 5s)
+        </div>
+        <button
+          onClick={() => useAuthStore.setState({ isCheckingAuth: false })}
+          className="mt-4 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm"
+        >
+          Bỏ qua
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <ToastContainer
@@ -51,6 +92,7 @@ function App() {
         {/* Main Authenticated Routes */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/genres" element={<GenresPage />} />
           {/* Real Pages */}
           <Route
             path="/mood-recommendation"
@@ -58,8 +100,12 @@ function App() {
           />
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
-          <Route path="/songs/:id" element={<SongDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+        </Route>
+
+        {/* Pages Without Sidebar */}
+        <Route element={<NoSidebarLayout />}>
+          <Route path="/songs/:id" element={<SongDetailPage />} />
         </Route>
 
         {/* Admin Routes */}

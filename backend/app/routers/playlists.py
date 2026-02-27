@@ -25,7 +25,7 @@ def list_playlists(
     user: User = Depends(get_current_user),
 ):
     """Danh sách playlist của user hiện tại"""
-    playlists = db.query(Playlist).filter(Playlist.user_id == user.id).all()
+    playlists = db.query(Playlist).filter(Playlist.user_id == user.user_id).all()
     result = []
     for p in playlists:
         song_count = len(p.songs)
@@ -47,7 +47,7 @@ def create_playlist(
 ):
     """Tạo playlist mới"""
     playlist = Playlist(
-        user_id=user.id,
+        user_id=user.user_id,
         name=data.name,
         is_public=int(data.is_public),
     )
@@ -68,7 +68,7 @@ def get_playlist(playlist_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Playlist không tồn tại")
 
     # Lấy tên người tạo
-    owner = db.query(User).filter(User.id == playlist.user_id).first()
+    owner = db.query(User).filter(User.user_id == playlist.user_id).first()
 
     return {
         "success": True,
@@ -93,7 +93,7 @@ def add_song_to_playlist(
     """Thêm bài hát vào playlist"""
     # Kiểm tra playlist thuộc user
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại")
@@ -134,7 +134,7 @@ def remove_song_from_playlist(
 ):
     """Xóa bài hát khỏi playlist"""
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại")
@@ -157,7 +157,7 @@ def delete_playlist(
 ):
     """Xóa playlist"""
     playlist = db.query(Playlist).filter(
-        Playlist.id == playlist_id, Playlist.user_id == user.id
+        Playlist.id == playlist_id, Playlist.user_id == user.user_id
     ).first()
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist không tồn tại hoặc bạn không có quyền")

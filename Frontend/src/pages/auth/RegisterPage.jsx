@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
+import { authAPI } from "../../services/api";
+import Swal from "sweetalert2";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -31,12 +33,28 @@ export default function RegisterPage() {
       return;
     }
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Registration attempt:", formData);
-      toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
-      navigate("/login");
+      // Create body mapped to match `/api/auth/register`
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        birth_date: formData.birth_date,
+      };
+
+      await authAPI.register(payload);
+      Swal.fire({
+        title: "Đăng ký thành công!",
+        text: "Tài khoản của bạn đã được tạo. Vui lòng đăng nhập.",
+        icon: "success",
+        background: "#1D1D1D",
+        color: "#fff",
+        confirmButtonColor: "#2DC275",
+        confirmButtonText: "Đăng nhập ngay",
+      }).then(() => {
+        navigate("/login");
+      });
     } catch (err) {
-      toast.error("Đăng ký thất bại. Vui lòng thử lại sau.");
+      toast.error(err.message || "Đăng ký thất bại. Vui lòng thử lại sau.");
     } finally {
       setIsLoading(false);
     }

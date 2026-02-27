@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export default function Modal({
@@ -7,6 +8,7 @@ export default function Modal({
   title,
   children,
   maxWidth = "max-w-md",
+  showCloseButton = true,
 }) {
   // Prevent scrolling on body when modal is open
   useEffect(() => {
@@ -22,8 +24,8 @@ export default function Modal({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
@@ -34,12 +36,14 @@ export default function Modal({
       <div
         className={`relative bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full ${maxWidth} shadow-2xl scale-100 animate-in fade-in zoom-in-95 duration-200`}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
+        {showCloseButton && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        )}
 
         {title && (
           <h2 className="text-xl font-bold text-white mb-4 pr-8">{title}</h2>
@@ -47,6 +51,7 @@ export default function Modal({
 
         <div className="mt-2">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

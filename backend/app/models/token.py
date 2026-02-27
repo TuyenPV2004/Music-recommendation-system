@@ -7,7 +7,7 @@ class ResetPasswordToken(Base):
     __tablename__ = "reset_password_token"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
-    user_id    = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id    = Column(String(40), ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False)
     token      = Column(String(512), nullable=False)
     used_at    = Column(DateTime, nullable=True)
     expired_at = Column(DateTime, nullable=False)

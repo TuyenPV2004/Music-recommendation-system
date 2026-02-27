@@ -1,14 +1,39 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Play, Music } from "lucide-react";
 import usePlayerStore from "../../store/usePlayerStore";
 
-export default function SongCard({ song, playlist }) {
+export default function SongCard({ song, siblings }) {
   const [isHovered, setIsHovered] = useState(false);
-  const { playSong } = usePlayerStore();
+  const playSong = usePlayerStore((state) => state.playSong);
+  const setPlaylist = usePlayerStore((state) => state.setPlaylist);
+  const navigate = useNavigate();
 
-  const handlePlayClick = () => {
-    // Truyền cả playlist để bật next/prev
-    playSong(song, playlist || null);
+  const handlePlayClick = (e) => {
+    e.stopPropagation();
+    const songObj = {
+      ...song,
+      id: song.id || song.song_id,
+      name: song.name || song.title,
+      author: song.author || song.artist,
+      audio_link: song.audio_link || song.cover,
+    };
+    if (siblings && siblings.length > 0) {
+      setPlaylist(
+        siblings.map((s) => ({
+          ...s,
+          id: s.id || s.song_id,
+          name: s.name || s.title,
+          author: s.author || s.artist,
+          audio_link: s.audio_link || s.cover,
+        })),
+      );
+    }
+    playSong(songObj);
+  };
+
+  const handleCardClick = () => {
+    navigate(`/songs/${song.id || song.song_id}`);
   };
 
   return (
@@ -16,32 +41,19 @@ export default function SongCard({ song, playlist }) {
       className="bg-gray-900/40 hover:bg-gray-800 p-4 rounded-xl transition-all duration-300 group cursor-pointer border border-transparent hover:border-gray-700/50"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleCardClick}
     >
       <div className="relative mb-4 aspect-square">
-        {/* Cover art: dùng ảnh thật nếu có, ngược lại hiển thị placeholder */}
-        <div className="w-full h-full rounded-lg shadow-lg bg-gray-800 flex items-center justify-center overflow-hidden">
-          {song.cover ? (
-            <img
-              src={song.cover}
-              alt={song.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <Music className="w-10 h-10 text-gray-600" />
-          )}
+        <div className="w-full h-full rounded-lg shadow-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+          <Music className="w-12 h-12 text-white" />
         </div>
 
         {/* Play Button Overlay */}
         <button
-          className={`absolute bottom-2 right-2 w-12 h-12 ${
-            song.preview_url
-              ? "bg-green-500 hover:scale-105 hover:bg-green-400"
-              : "bg-gray-600 cursor-not-allowed"
-          } rounded-full flex items-center justify-center pl-[3px] text-black shadow-xl transition-all duration-300 ${
+          className={`absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center pl-[3px] text-black shadow-xl transition-all duration-300 ${
             isHovered ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
-          onClick={song.preview_url ? handlePlayClick : undefined}
-          title={song.preview_url ? "ĐẠng bài" : "Không có bản demo"}
+          } hover:scale-105 hover:bg-green-400`}
+          onClick={handlePlayClick}
         >
           <Play className="w-6 h-6" fill="currentColor" />
         </button>
@@ -50,15 +62,15 @@ export default function SongCard({ song, playlist }) {
       <div>
         <h3
           className="text-base font-semibold text-white truncate mb-1"
-          title={song.title}
+          title={song.name || song.title}
         >
-          {song.title}
+          {song.name || song.title}
         </h3>
         <p
-          className="text-sm text-gray-400 truncate"
-          title={song.artist}
+          className="text-sm text-gray-400 truncate hover:underline"
+          title={song.author || song.artist}
         >
-          {song.artist}
+          {song.author || song.artist}
         </p>
       </div>
     </div>

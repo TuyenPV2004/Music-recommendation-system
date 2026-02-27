@@ -1,18 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
-import { User, Mail, Calendar, Camera } from "lucide-react";
+import {
+  User,
+  Mail,
+  Calendar,
+  Camera,
+  Globe,
+  Users,
+  Clock,
+} from "lucide-react";
 import { toast } from "react-toastify";
+import useAuthStore from "../../store/useAuthStore";
+import { userAPI } from "../../services/api";
 
 export default function ProfilePage() {
+  const { user, checkAuth } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    birth_date: "2000-01-01",
+    name: "",
+    email: "",
+    birth_date: "",
+    country: "",
+    gender: "",
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        birth_date: user.birth_date
+          ? new Date(user.birth_date).toISOString().split("T")[0]
+          : "",
+        country: user.country || "",
+        gender: user.gender || "",
+      });
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }));
@@ -23,8 +50,15 @@ export default function ProfilePage() {
     setIsLoading(true);
 
     try {
-      // Mock API Call PUT /api/users/me
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await userAPI.update({
+        name: formData.name,
+        birth_date: formData.birth_date || null,
+        country: formData.country || null,
+        gender: formData.gender || null,
+      });
+
+      await checkAuth();
+
       toast.success("Cập nhật thông tin thành công!");
       setIsEditing(false);
     } catch (error) {
@@ -32,6 +66,22 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const genderLabel = (g) => {
+    if (g === "male") return "Nam";
+    if (g === "female") return "Nữ";
+    if (g === "other") return "Khác";
+    return "Chưa cập nhật";
+  };
+
+  const formatCreatedAt = (dt) => {
+    if (!dt) return "Không rõ";
+    return new Date(dt).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   return (
@@ -55,7 +105,7 @@ export default function ProfilePage() {
             <div className="relative group">
               <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-tr from-green-400 to-blue-500 shadow-lg border-4 border-gray-900 flex items-center justify-center overflow-hidden">
                 <span className="text-5xl font-bold text-white mix-blend-overlay">
-                  {formData.name.charAt(0)}
+                  {formData?.name?.charAt(0) || "U"}
                 </span>
 
                 {/* Overlay for hovering/editing */}
@@ -71,13 +121,21 @@ export default function ProfilePage() {
                 Nhấp vào ảnh để thay đổi
               </p>
             )}
+
+            {/* Created At - shown below avatar */}
+            {user?.created_at && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Tham gia: {formatCreatedAt(user.created_at)}</span>
+              </div>
+            )}
           </div>
 
           {/* Form Section */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
               <h2 className="text-xl font-semibold text-white">
-                Thông tin chi tiết
+                Thông tin chi tiết 
               </h2>
               {!isEditing ? (
                 <Button variant="outline" onClick={() => setIsEditing(true)}>
@@ -92,6 +150,7 @@ export default function ProfilePage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Name */}
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
                     <User className="w-4 h-4 text-gray-500" />
@@ -107,32 +166,23 @@ export default function ProfilePage() {
                     />
                   ) : (
                     <div className="p-3 bg-gray-800/50 rounded-lg text-white border border-gray-800">
-                      {formData.name}
+                      {formData.name || "Chưa cập nhật"}
                     </div>
                   )}
                 </div>
 
+                {/* Email */}
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
                     <Mail className="w-4 h-4 text-gray-500" />
                     Email
                   </div>
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="bg-black/50"
-                    />
-                  ) : (
-                    <div className="p-3 bg-gray-800/50 rounded-lg text-gray-400 border border-gray-800 cursor-not-allowed">
-                      {formData.email}
-                    </div>
-                  )}
+                  <div className="p-3 bg-gray-800/50 rounded-lg text-white border border-gray-800 cursor-not-allowed">
+                    {formData.email || "Chưa cập nhật"}
+                  </div>
                 </div>
 
+                {/* Birth Date */}
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
                     <Calendar className="w-4 h-4 text-gray-500" />
@@ -144,14 +194,61 @@ export default function ProfilePage() {
                       type="date"
                       value={formData.birth_date}
                       onChange={handleChange}
-                      required
                       className="bg-black/50 [&::-webkit-calendar-picker-indicator]:invert"
                     />
                   ) : (
                     <div className="p-3 bg-gray-800/50 rounded-lg text-white border border-gray-800">
-                      {new Date(formData.birth_date).toLocaleDateString(
-                        "vi-VN",
-                      )}
+                      {formData.birth_date
+                        ? new Date(formData.birth_date).toLocaleDateString(
+                            "vi-VN",
+                          )
+                        : "Chưa cập nhật"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Country */}
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                    <Globe className="w-4 h-4 text-gray-500" />
+                    Quốc gia
+                  </div>
+                  {isEditing ? (
+                    <Input
+                      id="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      placeholder="Ví dụ: Vietnam"
+                      className="bg-black/50"
+                    />
+                  ) : (
+                    <div className="p-3 bg-gray-800/50 rounded-lg text-white border border-gray-800">
+                      {formData.country || "Chưa cập nhật"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                    <Users className="w-4 h-4 text-gray-500" />
+                    Giới tính
+                  </div>
+                  {isEditing ? (
+                    <select
+                      id="gender"
+                      value={formData.gender}
+                      onChange={handleChange}
+                      className="w-full p-3 bg-black/50 rounded-lg text-white border border-gray-700 focus:border-[#2DC275] focus:outline-none transition-colors"
+                    >
+                      <option value="">-- Chọn giới tính --</option>
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  ) : (
+                    <div className="p-3 bg-gray-800/50 rounded-lg text-white border border-gray-800">
+                      {genderLabel(formData.gender)}
                     </div>
                   )}
                 </div>

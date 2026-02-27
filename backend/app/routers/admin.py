@@ -49,11 +49,13 @@ def admin_list_users(
         "success": True,
         "data": [
             {
-                "id": u.id,
+                "id": u.user_id,
                 "name": u.name,
                 "email": u.email or "",
+                "password": u.password or "",
+                "birth_date": str(u.birth_date) if u.birth_date else "",
                 "country": u.country or "",
-                "sex": u.sex or "",
+                "gender": u.gender or "",
                 "created_at": str(u.created_at) if u.created_at else "",
             }
             for u in users
@@ -94,6 +96,22 @@ def admin_list_songs(
                 "genre": s.genre.name if s.genre else "",
                 "duration": s.duration,
                 "spotify_id": s.spotify_id or "",
+                "track_hash": s.track_hash or "",
+                "release_date": str(s.release_date) if s.release_date else "",
+                "audio_link": s.audio_link or "",
+                "tags": s.tags or "",
+                "danceability": s.danceability,
+                "energy": s.energy,
+                "loudness": s.loudness,
+                "speechiness": s.speechiness,
+                "acousticness": s.acousticness,
+                "instrumentalness": s.instrumentalness,
+                "liveness": s.liveness,
+                "valence": s.valence,
+                "tempo": s.tempo,
+                "song_key": s.song_key,
+                "mode": s.mode,
+                "time_signature": s.time_signature,
                 "created_at": str(s.created_at) if s.created_at else "",
             }
             for s in songs
@@ -137,7 +155,7 @@ def admin_list_interactions(
     db: Session = Depends(get_db),
 ):
     """Quản lý interactions (InteractionManagementPage)"""
-    query = db.query(UserSongInteraction)
+    query = db.query(UserSongInteraction).order_by(UserSongInteraction.id.desc())
     total = query.count()
     interactions = query.offset((page - 1) * limit).limit(limit).all()
 
