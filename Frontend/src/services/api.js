@@ -76,7 +76,8 @@ export const playlistAPI = {
 
 // ── Recommendations ─────────────────────────────────────
 export const recommendAPI = {
-  mood: (body) => apiClient.post("/recommendations/mood", body),
+  mood: (body, params = {}) =>
+    apiClient.post("/recommendations/mood", body, { params }),
   hybrid: (userId, params = {}) =>
     apiClient.get(`/recommendations/recommend/${userId}`, { params }),
 };

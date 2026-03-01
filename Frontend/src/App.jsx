@@ -10,11 +10,14 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import HomePage from "./pages/home/HomePage";
 import MoodRecommendationPage from "./pages/mood/MoodRecommendationPage";
+import MoodRecommendationResultPage from "./pages/mood/MoodRecommendationResultPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 import PlaylistsPage from "./pages/playlists/PlaylistsPage";
 import PlaylistDetailPage from "./pages/playlists/PlaylistDetailPage";
 import SongDetailPage from "./pages/song/SongDetailPage";
 import GenresPage from "./pages/genres/GenresPage";
+import RecommendationsPage from "./pages/home/RecommendationsPage";
+import TrendingPage from "./pages/home/TrendingPage";
 
 // Admin
 import AdminLayout from "./layouts/AdminLayout";
@@ -92,11 +95,17 @@ function App() {
         {/* Main Authenticated Routes */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/recommendations" element={<RecommendationsPage />} />
+          <Route path="/trending" element={<TrendingPage />} />
           <Route path="/genres" element={<GenresPage />} />
           {/* Real Pages */}
           <Route
             path="/mood-recommendation"
             element={<MoodRecommendationPage />}
+          />
+          <Route
+            path="/mood-recommendation/result"
+            element={<MoodRecommendationResultPage />}
           />
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/playlists/:id" element={<PlaylistDetailPage />} />

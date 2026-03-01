@@ -220,7 +220,7 @@ export default function GenreManagementPage() {
                       #{genre.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 w-48 overflow-x-auto custom-scrollbar pb-2">
                         <span
                           className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getGenreColorClass(genre.id)}`}
                         >
