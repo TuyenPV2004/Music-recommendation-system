@@ -3,6 +3,7 @@ import Button from "../../components/ui/Button";
 import SongCard from "../../components/song/SongCard";
 import { Sparkles, Loader2, Smile, Frown, Coffee } from "lucide-react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 import { recommendAPI } from "../../services/api";
 
@@ -55,6 +56,7 @@ export default function MoodRecommendationPage() {
   const [statusText, setStatusText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const navigate = useNavigate();
 
   const handleAnalyze = async () => {
     if (!statusText.trim()) {
@@ -66,7 +68,11 @@ export default function MoodRecommendationPage() {
     setResult(null);
 
     try {
-      const response = await recommendAPI.mood({ text: statusText });
+      // Đặt limit lớn (ví dụ 1000) để lấy toàn bộ bài hát trong cơ sở dữ liệu
+      const response = await recommendAPI.mood(
+        { text: statusText },
+        { limit: 1000 },
+      );
 
       const moodKey = response.detected_mood
         ? response.detected_mood.toLowerCase()
@@ -173,9 +179,17 @@ export default function MoodRecommendationPage() {
                 <h4 className="text-xl font-bold text-white flex items-center gap-2">
                   Danh sách gợi ý theo cảm xúc "{result.label}"
                 </h4>
-                <span className="text-sm font-medium text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700/50">
-                  {Math.min(result.songs.length, 10)} bài hát
-                </span>
+                <button
+                  onClick={() => {
+                    const { icon, ...serializableResult } = result;
+                    navigate("/mood-recommendation/result", {
+                      state: { result: serializableResult },
+                    });
+                  }}
+                  className="bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700 text-sm font-semibold text-white px-4 py-1.5 rounded-full transition-colors flex items-center gap-2"
+                >
+                  <span>Xem tất cả</span>
+                </button>
               </div>
               {result.songs.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">

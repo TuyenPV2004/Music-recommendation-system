@@ -333,9 +333,12 @@ export default function HomePage() {
                   Dựa trên sở thích nghe nhạc gần đây của bạn
                 </p>
               </div>
-              <button className="text-sm font-semibold text-gray-400 hover:text-white transition tracking-wider">
+              <Link
+                to="/recommendations"
+                className="text-sm font-semibold text-gray-400 hover:text-white transition tracking-wider"
+              >
                 Xem tất cả
-              </button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -435,9 +438,12 @@ export default function HomePage() {
               <h2 className="text-2xl font-bold text-white hover:underline cursor-pointer">
                 Thịnh hành
               </h2>
-              <button className="text-sm font-semibold text-gray-400 hover:text-white transition tracking-wider">
+              <Link
+                to="/trending"
+                className="text-sm font-semibold text-gray-400 hover:text-white transition tracking-wider"
+              >
                 Xem tất cả
-              </button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">

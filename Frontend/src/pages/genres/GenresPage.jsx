@@ -81,8 +81,8 @@ export default function GenresPage() {
       ) : genres.length > 0 ? (
         <div className="flex flex-col h-full overflow-hidden">
           {/* Genre Tabs Container */}
-          <div className="pb-6 border-b border-gray-800/50 mb-6 shrink-0 overflow-x-auto scrollbar-hide">
-            <div className="flex gap-4 w-max px-1 pt-2 pb-3">
+          <div className="pb-6 border-b border-gray-800/50 mb-6 shrink-0 overflow-x-auto custom-scrollbar w-full">
+            <div className="flex gap-4 px-1 pt-2 pb-3 min-w-max">
               {genres.map((genre) => {
                 const isSelected = selectedGenre?.id === genre.id;
                 const { bgClass } = getGenreColorClass(genre.id);
@@ -93,7 +93,7 @@ export default function GenresPage() {
                     onClick={() => setSelectedGenre(genre)}
                     className={`
                       px-6 py-4 rounded-2xl flex items-center justify-center transition-all duration-300
-                      font-bold text-lg whitespace-nowrap overflow-hidden relative group
+                      font-bold text-lg whitespace-nowrap overflow-hidden relative group shrink-0
                       ${bgClass}
                       ${isSelected ? "text-white shadow-lg scale-105 z-10 opacity-100" : "text-white/70 opacity-50 hover:opacity-80"}
                     `}
