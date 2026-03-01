@@ -55,7 +55,7 @@ def _song_to_brief(song: Song) -> dict:
 @router.get("")
 def list_songs(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=100),
     search: str = Query("", description="Tìm theo tên bài hát hoặc nghệ sĩ"),
     genre: int = Query(None, description="Lọc theo genre_id"),
     db: Session = Depends(get_db),
@@ -85,20 +85,13 @@ def list_songs(
 @router.get("/{song_id}")
 def get_song(
     song_id: int,
-    similar_limit: int = Query(DEFAULT_SIMILAR_LIMIT, ge=1, le=30),
     db: Session = Depends(get_db),
 ):
-    """
-    Chi tiết một bài hát kèm danh sách bài hát tương tự.
-
-    Similar songs được tính bằng cosine similarity trên 7 audio features.
-    Có thể điều chỉnh số lượng qua query param ?similar_limit=N.
-    """
     song = db.query(Song).filter(Song.id == song_id).first()
-    if not song:
-        raise HTTPException(status_code=404, detail="Bài hát không tồn tại")
 
-    # Tính tổng listen_count
+    if not song:
+        raise HTTPException(404, "Bài hát không tồn tại")
+
     total_listens = (
         db.query(sql_func.sum(UserSongInteraction.listen_count))
         .filter(UserSongInteraction.song_id == song_id)
@@ -107,28 +100,6 @@ def get_song(
     )
 
     genre_name = song.genre.name if song.genre else None
-
-    # ── Similar songs (cosine similarity) ─────────────────────────────────────
-    candidate_songs = (
-        db.query(Song)
-        .filter(Song.valence.isnot(None), Song.energy.isnot(None))
-        .all()
-    )
-    similar_ranked = rank_similar_songs(
-        target_song=song,
-        candidate_songs=candidate_songs,
-        limit=similar_limit,
-    )
-    similar_out = [
-        SongBriefWithScore(
-            id=s.id,
-            title=s.name,
-            artist=s.author or "Unknown",
-            cover=s.audio_link or "",
-            similarity=round(score, 4),
-        )
-        for s, score in similar_ranked
-    ]
 
     return {
         "success": True,
@@ -149,5 +120,45 @@ def get_song(
             "valence": song.valence,
             "tempo": song.tempo,
         },
-        "similar_songs": [s.model_dump() for s in similar_out],
+    }
+
+@router.get("/{song_id}/similar")
+def get_similar_songs(
+    song_id: int,
+    similar_limit: int = Query(10, ge=1, le=30),
+    db: Session = Depends(get_db),
+):
+    song = db.query(Song).filter(Song.id == song_id).first()
+
+    if not song:
+        raise HTTPException(404, "Bài hát không tồn tại")
+
+    candidate_songs = (
+        db.query(Song)
+        .filter(
+            Song.valence.isnot(None),
+            Song.energy.isnot(None),
+        )
+        .all()
+    )
+
+    similar_ranked = rank_similar_songs(
+        target_song=song,
+        candidate_songs=candidate_songs,
+        limit=similar_limit,
+    )
+
+    similar_out = [
+        SongBriefWithScore(
+            id=s.id,
+            title=s.name,
+            artist=s.author or "Unknown",
+            cover=s.audio_link or "",
+            similarity=round(score, 4),
+        )
+        for s, score in similar_ranked
+    ]
+
+    return {
+        "similar_songs": [s.model_dump() for s in similar_out]
     }

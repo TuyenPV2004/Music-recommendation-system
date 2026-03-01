@@ -4,6 +4,7 @@ from pathlib import Path
 import joblib
 import os
 import requests
+import json
 
 from app.ai.recommendation.train_pipeline import train_full_pipeline
 
@@ -27,6 +28,10 @@ def full_retrain_task():
     joblib.dump(artifacts["user_features"], version_dir / "user_features_matrix.pkl")
     joblib.dump(artifacts["item_features"], version_dir / "item_features_matrix.pkl")
     joblib.dump(artifacts["interaction_train"], version_dir / "interaction_train.pkl")
+    joblib.dump(artifacts["feature_artifacts"], version_dir / "feature_artifacts.pkl")
+
+    with open(version_dir / "metrics.json", "w") as f:
+        json.dump(artifacts["metrics"], f, indent=2)
 
     tmp_file = ACTIVE_FILE.with_suffix(".tmp")
     with open(tmp_file, "w") as f:

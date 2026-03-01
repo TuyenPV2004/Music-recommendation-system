@@ -1,18 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import SongCard from "../../components/song/SongCard";
-import Input from "../../components/ui/Input";
 import { Search, Bell, Music, Users, Loader2, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import useLayoutStore from "../../store/useLayoutStore";
 import useAuthStore from "../../store/useAuthStore";
 import usePlayerStore from "../../store/usePlayerStore";
 import { recommendAPI, genreAPI, songAPI } from "../../services/api";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { isExpanded, setIsExpanded } = useLayoutStore();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const playSong = usePlayerStore((state) => state.playSong);
 
@@ -104,57 +101,56 @@ export default function HomePage() {
 
   // ── Fetch data on mount ───────────────────────────────────────
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRecommendations = async () => {
+      setIsLoading(true);
       try {
-        if (isAuthenticated && user?.user_id) {
-          recommendAPI
-            .hybrid(user.user_id, { page_size: 10 })
-            .then((res) => {
-              const recData =
-                res.recommendations ||
-                res.data?.recommendations ||
-                res.data?.songs ||
-                res.songs ||
-                [];
-              setRecommendations(recData);
-            })
-            .catch((error) => {
-              console.error("Lỗi lấy gợi ý: ", error);
-              setRecommendations([]);
-            });
-        } else {
-          setRecommendations([]);
-        }
+        const res = await recommendAPI.hybrid({ page_size: 10 });
 
-        // Fetch genres
-        let genreData = [];
-        try {
-          const res = await genreAPI.list();
-          genreData = res.data || res.items || res || [];
-        } catch (error) {
-          console.error("Lỗi lấy thể loại: ", error);
-        }
+        const recData =
+          res.recommendations ||
+          res.data?.recommendations ||
+          [];
 
-        // Fetch trending (just list songs for now)
-        let trendingData = [];
-        try {
-          const res = await songAPI.list({ limit: 10 });
-          trendingData = res.data?.items || res.items || res.data || [];
-        } catch (error) {
-          console.error("Lỗi lấy bài hát: ", error);
-        }
-
-        setGenres(genreData);
-        setTrendingSongs(trendingData);
-      } catch (err) {
-        console.error("Data fetch error", err);
+        setRecommendations(recData);
+      } catch (error) {
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchRecommendations();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    const fetchPublicData = async () => {
+      setIsLoading(true);
+      try {
+        const [genreRes, trendingRes] = await Promise.all([
+          genreAPI.list(),
+          songAPI.list({ limit: 20 }),
+        ]);
+
+        const genreData =
+          genreRes.data || genreRes.items || genreRes || [];
+
+        const trendingData =
+          trendingRes.data?.items ||
+          trendingRes.items ||
+          trendingRes.data ||
+          [];
+
+        setGenres(genreData);
+        setTrendingSongs(trendingData);
+      } catch (error) {
+        console.error("Fetch public data error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPublicData();
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-black">
@@ -354,9 +350,7 @@ export default function HomePage() {
                 ))
               ) : (
                 <div className="text-gray-400 col-span-full">
-                  {isAuthenticated
-                    ? "Chưa có đủ dữ liệu để gợi ý. Hãy nghe thêm nhạc nhé!"
-                    : "Vui lòng đăng nhập để xem gợi ý dành cho bạn."}
+                    Chưa có đủ dữ liệu để gợi ý. Hãy nghe thêm nhạc nhé!
                 </div>
               )}
             </div>

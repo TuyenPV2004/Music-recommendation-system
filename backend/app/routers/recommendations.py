@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
-from ..dependencies import get_db, get_current_user
+from ..dependencies import get_db, get_current_user_optional
 from ..models.user import User
 from ..models.song import Song
 from ..models.interaction import UserSongInteraction
@@ -136,14 +136,14 @@ def mood_recommendation(
         songs=songs_out,
     )
 
-@router.get("/recommend/{user_id}", response_model=HybridRecommendationResponse)
+@router.get("/recommend", response_model=HybridRecommendationResponse)
 def get_recommendations(
-    user_id: str,
-    #user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user_optional),
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db)
 ):
+    user_id = user.user_id if user else None
 
     song_ids = recommendation_service.recommend_ids(user_id, page, page_size)
     songService = SongService(db)
