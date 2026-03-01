@@ -44,6 +44,7 @@ export const userAPI = {
 export const songAPI = {
   list: (params = {}) => apiClient.get("/songs", { params }),
   detail: (id) => apiClient.get(`/songs/${id}`),
+  similar: (id, params = {}) => apiClient.get(`/songs/${id}/similar`, { params }),
 };
 
 // ── Genres ──────────────────────────────────────────────
@@ -78,8 +79,8 @@ export const playlistAPI = {
 export const recommendAPI = {
   mood: (body, params = {}) =>
     apiClient.post("/recommendations/mood", body, { params }),
-  hybrid: (userId, params = {}) =>
-    apiClient.get(`/recommendations/recommend/${userId}`, { params }),
+  hybrid: ( params = {}) =>
+    apiClient.get(`/recommendations/recommend`, { params }),
 };
 
 // ── Admin ───────────────────────────────────────────────

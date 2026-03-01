@@ -29,6 +29,7 @@ class RecommendationService:
         self.user_features = joblib.load(self.active_version_dir / "user_features_matrix.pkl")
         self.item_features = joblib.load(self.active_version_dir / "item_features_matrix.pkl")
         self.interaction_train = joblib.load(self.active_version_dir / "interaction_train.pkl")
+        # self.feature_artifacts = joblib.load(self.active_version_dir / "feature_artifacts.pkl")
 
         # 🔥 recompute popularity
         item_popularity = np.array(

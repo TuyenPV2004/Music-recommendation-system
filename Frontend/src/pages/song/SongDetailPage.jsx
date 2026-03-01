@@ -30,7 +30,8 @@ export default function SongDetailPage() {
 
   const [song, setSong] = useState(null);
   const [relatedSongs, setRelatedSongs] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(true);
+  const [isLoadingSimilar, setIsLoadingSimilar] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const [playlists, setPlaylists] = useState([]);
@@ -53,34 +54,43 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchSong = async () => {
-      setIsLoading(true);
+      setIsLoadingDetail(true);
+
       try {
         const res = await songAPI.detail(id);
         const data = res.data || res;
-        setSong(data);
 
-        if (data.genre_id) {
-          try {
-            const relatedRes = await songAPI.list({
-              genre: data.genre_id,
-              limit: 12, // Get enough for 2 rows
-            });
-            const relatedData = relatedRes.data || relatedRes;
-            setRelatedSongs(
-              (relatedData.data || relatedData).filter((s) => s.id !== data.id),
-            );
-          } catch (err) {
-            console.error("Error fetching related songs:", err);
-          }
-        }
+        setSong(data);
       } catch (error) {
         console.error("Error fetching song:", error);
         toast.error("Không thể tải thông tin bài hát.");
       } finally {
-        setIsLoading(false);
+        setIsLoadingDetail(false);
       }
     };
+
     fetchSong();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchSimilar = async () => {
+      setIsLoadingSimilar(true);
+
+      try {
+        const res = await songAPI.similar(id, { limit: 12 });
+        const data = res.data || res;
+
+        setRelatedSongs(data.similar_songs || []);
+      } catch (err) {
+        console.error("Error fetching similar songs:", err);
+      } finally {
+        setIsLoadingSimilar(false);
+      }
+    };
+
+    fetchSimilar();
   }, [id]);
 
   const handlePlayToggle = () => {
@@ -174,7 +184,7 @@ export default function SongDetailPage() {
     );
   };
 
-  if (isLoading) {
+  if (isLoadingDetail) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-green-400 animate-spin" />
@@ -373,10 +383,14 @@ export default function SongDetailPage() {
           )}
 
           {/* Related Songs */}
-          {relatedSongs && relatedSongs.length > 0 && (
+          {isLoadingSimilar ? (
+            <div className="text-gray-400">Đang tải bài hát tương tự...</div>
+          ) : relatedSongs.length === 0 ? (
+            <div className="text-gray-400">Không có bài hát tương tự nào.</div>
+          ) : (
             <div className="pt-4">
               <h2 className="text-xl font-bold text-white mb-4">
-                Cùng thể loại
+                Có thể bạn sẽ thích
               </h2>
               <div className="grid grid-cols-5 gap-4">
                 {relatedSongs.slice(0, 10).map((rs) => (

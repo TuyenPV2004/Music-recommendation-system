@@ -1,41 +1,35 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
 import SongCard from "../../components/song/SongCard";
 import { recommendAPI } from "../../services/api";
 import useAuthStore from "../../store/useAuthStore";
 
 export default function RecommendationsPage() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ── Fetch data on mount ───────────────────────────────────────
   useEffect(() => {
     const fetchRecommendations = async () => {
+      setIsLoading(true);
       try {
-        if (isAuthenticated && user?.user_id) {
-          const res = await recommendAPI.hybrid(user.user_id, {
-            page_size: 50,
-          });
-          const recData =
-            res.recommendations ||
-            res.data?.recommendations ||
-            res.data?.songs ||
-            res.songs ||
-            [];
-          setRecommendations(recData);
-        } else {
-          setRecommendations([]);
-        }
+        const res = await recommendAPI.hybrid({ page_size: 10 });
+
+        const recData =
+          res.recommendations ||
+          res.data?.recommendations ||
+          [];
+
+        setRecommendations(recData);
       } catch (error) {
-        console.error("Lỗi lấy gợi ý: ", error);
-        setRecommendations([]);
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchRecommendations();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated]);
 
   return (
     <div className="flex flex-col h-full bg-black">
@@ -67,9 +61,7 @@ export default function RecommendationsPage() {
               ))
             ) : (
               <div className="text-gray-400 col-span-full">
-                {isAuthenticated
-                  ? "Chưa có đủ dữ liệu để gợi ý. Hãy nghe thêm nhạc nhé!"
-                  : "Vui lòng đăng nhập để xem gợi ý dành cho bạn."}
+                  Vui lòng đăng nhập để xem gợi ý dành cho bạn.
               </div>
             )}
           </div>
