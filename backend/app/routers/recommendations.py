@@ -86,7 +86,7 @@ def _build_blend_info(probabilities: dict[str, float]) -> BlendInfo:
 @router.post("/mood", response_model=MoodRecommendationResponse)
 def mood_recommendation(
     data: MoodRequest,
-    limit: int = Query(DEFAULT_MOOD_LIMIT, ge=1, le=50),
+    limit: int = Query(DEFAULT_MOOD_LIMIT, ge=1, le=1000),
     db: Session = Depends(get_db),
 ):
     """
