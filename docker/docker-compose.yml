@@ -36,16 +36,16 @@ services:
     volumes:
       - ../backend:/app
       - ../shared_models:/shared_models
+      - hf_cache:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
-      # - DATABASE_URL=mysql+pymysql://root:123456@db:3306/music_recommendation_system_db
+      - HF_HOME=/root/.cache/huggingface
+      - DATABASE_URL=mysql+pymysql://root:123456@db:3306/music_recommendation_system_db
       - JWT_SECRET_KEY=your-secret-key-here
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRE_MINUTES=1440
-      # URL tới PhoBERT service (Module 1 chạy riêng)
-      # Nếu Module 1 chạy trên máy host: dùng host.docker.internal:5001
-      # Nếu Module 1 chưa chạy: backend tự fallback về keyword matching
-      - PHOBERT_API_URL=http://host.docker.internal:5001
+      # PhoBERT đã được tích hợp trực tiếp vào backend (không cần service riêng)
+      # Model file: backend/app/ai/models/best_model.pt
     depends_on:
       db:
         condition: service_healthy
@@ -86,3 +86,4 @@ services:
 volumes:
   mysql_data:
   models_volume:
+  hf_cache:

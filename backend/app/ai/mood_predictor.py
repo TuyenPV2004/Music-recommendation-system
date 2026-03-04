@@ -1,39 +1,50 @@
 """
 ╔══════════════════════════════════════════════════════════╗
-║  TÍCH HỢP MODULE 1 - PhoBERT                             ║
+║  TÍCH HỢP MODULE 1 - PhoBERT (Direct Import)            ║
 ╚══════════════════════════════════════════════════════════╝
 
-Interface cần giữ nguyên:
+Interface giữ nguyên:
   - predict_mood(text: str) -> dict
   - get_mood_audio_mapping() -> dict
 
-Cách tích hợp (Microservice):
-  Module 1 chạy như 1 service API độc lập tại port 5001.
-  Backend gọi HTTP tới service đó thay vì import trực tiếp.
-  → Hai repo hoàn toàn tách biệt, không phụ thuộc nhau.
+Cách tích hợp (Direct Import):
+  PhoBERT được nhúng trực tiếp vào backend, không cần service riêng.
+  Model được lazy-load lần đầu tiên khi gọi predict_mood().
 
-  Để chạy Module 1 service:
-    cd "module 1"
-    uvicorn api:app --port 5001
+  File model cần đặt tại: backend/app/ai/models/best_model.pt
+  (copy từ module 1/models/phobert_mood/best_model.pt)
 
-  Nếu service chưa chạy → backend tự fallback về keyword matching,
+  Nếu file model không tồn tại → fallback về keyword matching,
   không crash, vẫn hoạt động bình thường.
 """
 import json
 import os
-import urllib.request
-import urllib.error
-
-# URL của PhoBERT service (Module 1 chạy riêng)
-# Đọc từ biến môi trường, mặc định localhost:5001
-# Trong Docker: PHOBERT_API_URL=http://host.docker.internal:5001
-PHOBERT_API_URL = os.getenv("PHOBERT_API_URL", "http://localhost:5001")
 
 # Path tới emotion_audio_mapping.json (đặt cạnh file này)
-# Ánh xạ: tên cảm xúc → {valence, energy, danceability}
-MAPPING_PATH = os.path.join(
-    os.path.dirname(__file__), "emotion_audio_mapping.json"
-)
+MAPPING_PATH = os.path.join(os.path.dirname(__file__), "emotion_audio_mapping.json")
+
+# Path tới file trọng số PhoBERT đã train
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "best_model.pt")
+
+# Lazy-load: khởi tạo 1 lần duy nhất khi gọi predict_mood() lần đầu
+_predictor = None
+
+
+def _get_predictor():
+    """Trả về MoodPredictor đã được load. Lazy-load lần đầu gọi."""
+    global _predictor
+    if _predictor is not None:
+        return _predictor
+    try:
+        from .phobert.predictor import MoodPredictor
+        _predictor = MoodPredictor(model_path=MODEL_PATH)
+        return _predictor
+    except FileNotFoundError as e:
+        print(f"⚠️  Không tìm thấy model file: {e}")
+        return None
+    except Exception as e:
+        print(f"⚠️  Không thể load PhoBERT model: {e}")
+        return None
 
 
 def get_mood_audio_mapping() -> dict:
@@ -53,49 +64,32 @@ def get_mood_audio_mapping() -> dict:
     }
 
 
-def _call_phobert_service(text: str) -> dict | None:
-    """
-    Gọi HTTP POST tới PhoBERT service (Module 1).
-    Trả về dict kết quả nếu thành công, None nếu service không khả dụng.
-    """
-    try:
-        body = json.dumps({"text": text}).encode("utf-8")
-        req = urllib.request.Request(
-            f"{PHOBERT_API_URL}/predict",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.URLError:
-        # Service chưa chạy hoặc không kết nối được → dùng fallback
-        return None
-    except Exception as e:
-        print(f"⚠️  PhoBERT service lỗi: {e}")
-        return None
-
-
 def predict_mood(text: str) -> dict:
     """
     Dự đoán cảm xúc từ văn bản tiếng Việt.
 
-    Ưu tiên 1: Gọi PhoBERT service (Module 1) tại PHOBERT_API_URL
-    Ưu tiên 2: Fallback keyword matching đơn giản (khi service chưa chạy)
+    Ưu tiên 1: PhoBERT model được load trực tiếp (backend/app/ai/models/best_model.pt)
+    Ưu tiên 2: Fallback keyword matching đơn giản (khi file model chưa có)
 
     Returns:
         dict: { detected_mood, confidence, probabilities }
     """
-    # ── Bước 1: Thử gọi PhoBERT service ──────────────────
-    result = _call_phobert_service(text)
-    if result is not None:
-        return result  # Trả về kết quả thật từ PhoBERT
+    # ── Bước 1: Thử dùng PhoBERT trực tiếp ───────────────
+    predictor = _get_predictor()
+    if predictor is not None:
+        try:
+            emotion, prob_dict = predictor.predict(text, return_probs=True)
+            return {
+                "detected_mood": emotion,
+                "confidence":    float(prob_dict.get(emotion, 0.0)),
+                "probabilities": {k: float(v) for k, v in prob_dict.items()},
+            }
+        except Exception as e:
+            print(f"⚠️  PhoBERT inference lỗi: {e}")
 
     # ── Bước 2: Fallback keyword matching ─────────────────
-    # Dùng khi Module 1 service chưa chạy
-    print(f"⚠️  PhoBERT service không khả dụng tại {PHOBERT_API_URL}. Dùng keyword fallback.")
+    print("⚠️  PhoBERT không khả dụng. Dùng keyword fallback.")
 
-    # Keyword rules → (emotion_label, confidence)
     _KEYWORD_RULES = [
         (["vui", "hạnh phúc", "tuyệt", "yêu", "thích", "phấn khích"],  "Enjoyment", 0.80),
         (["buồn", "khóc", "chán", "nhớ", "chia tay", "cô đơn"],        "Sadness",   0.80),
@@ -113,7 +107,6 @@ def predict_mood(text: str) -> dict:
             detected, confidence = label, conf
             break
 
-    # Trả về probabilities đầy đủ để build_target_vector có thể dùng
     all_emotions = ["enjoyment", "sadness", "anger", "fear", "surprise", "disgust", "other"]
     residual = (1.0 - confidence) / (len(all_emotions) - 1)
     probabilities = {e: residual for e in all_emotions}

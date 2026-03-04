@@ -3,6 +3,13 @@ FROM python:3.10
 WORKDIR /app
 
 COPY backend/requirements.txt .
+
+# Cài torch CPU-only trước để tránh tải bản CUDA nặng (~2GB)
+# Dùng --extra-index-url (không phải --index-url) để giữ PyPI làm index chính,
+# tránh lỗi typing-extensions/Jinja2 naming conflict từ PyTorch whl index.
+# Nếu server có GPU, thay dòng dưới bằng: pip install torch==2.6.0 --extra-index-url https://download.pytorch.org/whl/cu118
+RUN pip install --no-cache-dir torch==2.6.0 --extra-index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
